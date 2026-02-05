@@ -192,6 +192,7 @@ export default function CheckoutPage() {
       // 呼叫 API 取得地圖 URL
       const res = await getCvsMap({
         cvs_type: formData.cvsType,
+        return_url: `${window.location.origin}/checkout`,
       });
 
       if (res.success && res.map_url) {
