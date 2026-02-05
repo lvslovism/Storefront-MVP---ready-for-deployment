@@ -96,3 +96,97 @@ body {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+/* ========================================
+   黑金主題 (Black & Gold Theme)
+   ======================================== */
+
+/* 金色漸層文字 */
+.gold-text {
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 金色卡片 */
+.gold-card {
+  background: #0a0a0a;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+}
+
+.gold-card:hover {
+  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+/* 金色按鈕 */
+.btn-gold {
+  @apply inline-flex items-center justify-center px-6 py-3 font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%);
+  color: #000;
+  border-radius: var(--border-radius);
+}
+
+.btn-gold:hover {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}
+
+/* 金色邊框 */
+.gold-border {
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+/* 金色光暈 */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+/* 金色外框按鈕 */
+.btn-gold-outline {
+  @apply inline-flex items-center justify-center px-6 py-3 font-semibold transition-all duration-300;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #D4AF37;
+  border-radius: var(--border-radius);
+}
+
+.btn-gold-outline:hover {
+  border-color: #D4AF37;
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* LINE 綠色按鈕 */
+.btn-line {
+  @apply inline-flex items-center justify-center font-semibold transition-all duration-300;
+  background: #06C755;
+  color: #fff;
+  border-radius: var(--border-radius);
+}
+
+.btn-line:hover {
+  background: #05b34c;
+  box-shadow: 0 0 20px rgba(6, 199, 85, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   首頁動畫 (Homepage Animations)
+   ======================================== */
+
+/* Hero 文字依序進場 */
+section:first-child h1 {
+  animation: fade-in 1s ease 0.2s both;
+}
+section:first-child h2 {
+  animation: fade-in 1s ease 0.4s both;
+}
+section:first-child p {
+  animation: fade-in 1s ease 0.6s both;
+}
+section:first-child .flex {
+  animation: fade-in 1s ease 0.8s both;
+}

@@ -11,6 +11,13 @@ module.exports = {
         primary: 'var(--color-primary, #000000)',
         secondary: 'var(--color-secondary, #f5f5f5)',
         accent: 'var(--color-accent, #dc2626)',
+        // 黑金主題色系
+        gold: {
+          DEFAULT: '#D4AF37',
+          light: '#FFD700',
+          dark: '#B8962E',
+        },
+        'line-green': '#06C755',
       },
       fontFamily: {
         sans: ['var(--font-family)', 'system-ui', '-apple-system', 'sans-serif'],

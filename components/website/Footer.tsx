@@ -1,33 +1,39 @@
 import { config } from '@/lib/config';
 
-export default function Footer() {
+export default function WebsiteFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gray-900 text-gray-300 mt-12">
-      <div className="container mx-auto px-4 py-8">
+    <footer className="bg-black border-t border-gold/20 mt-16">
+      <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* 品牌資訊 */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-4">{config.store.name}</h3>
+            <h3 className="gold-text font-bold text-lg mb-4">{config.store.name}</h3>
             <p className="text-sm text-gray-400">{config.store.description}</p>
           </div>
 
           {/* 聯絡方式 */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-4">聯絡我們</h3>
+            <h3 className="text-gold font-bold text-lg mb-4">聯絡我們</h3>
             <ul className="space-y-2 text-sm">
               {config.contact.email && (
                 <li>
-                  <a href={`mailto:${config.contact.email}`} className="hover:text-white">
-                    📧 {config.contact.email}
+                  <a
+                    href={`mailto:${config.contact.email}`}
+                    className="text-gray-400 hover:text-gold transition-colors"
+                  >
+                    {config.contact.email}
                   </a>
                 </li>
               )}
               {config.contact.phone && (
                 <li>
-                  <a href={`tel:${config.contact.phone}`} className="hover:text-white">
-                    📞 {config.contact.phone}
+                  <a
+                    href={`tel:${config.contact.phone}`}
+                    className="text-gray-400 hover:text-gold transition-colors"
+                  >
+                    {config.contact.phone}
                   </a>
                 </li>
               )}
@@ -37,9 +43,9 @@ export default function Footer() {
                     href={config.contact.lineOA}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-white"
+                    className="text-gray-400 hover:text-line-green transition-colors"
                   >
-                    💬 LINE 官方帳號
+                    LINE 官方帳號
                   </a>
                 </li>
               )}
@@ -48,14 +54,14 @@ export default function Footer() {
 
           {/* 社群連結 */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-4">追蹤我們</h3>
+            <h3 className="text-gold font-bold text-lg mb-4">追蹤我們</h3>
             <div className="flex space-x-4">
               {config.contact.facebook && (
                 <a
                   href={config.contact.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white"
+                  className="text-gray-400 hover:text-gold transition-colors"
                   aria-label="Facebook"
                 >
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -68,7 +74,7 @@ export default function Footer() {
                   href={config.contact.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white"
+                  className="text-gray-400 hover:text-gold transition-colors"
                   aria-label="Instagram"
                 >
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -81,8 +87,8 @@ export default function Footer() {
         </div>
 
         {/* 版權 */}
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-500">
-          <p>© {currentYear} {config.store.name}. All rights reserved.</p>
+        <div className="border-t border-gold/20 mt-8 pt-8 text-center text-sm text-gray-500">
+          <p>&copy; {currentYear} {config.store.name}. All rights reserved.</p>
         </div>
       </div>
     </footer>

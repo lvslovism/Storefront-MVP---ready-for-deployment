@@ -36,6 +36,7 @@ export interface Product {
   id: string;
   title: string;
   handle: string;
+  subtitle: string | null;
   description: string | null;
   thumbnail: string | null;
   images: Array<{ id: string; url: string }>;
@@ -103,9 +104,40 @@ export async function getProductByHandle(handle: string): Promise<Product | null
   const searchParams = new URLSearchParams();
   searchParams.set('region_id', REGION_ID);
   searchParams.set('handle', handle);
-  
+
   const response = await medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);
   return response.products[0] || null;
+}
+
+// ============ 商品分類 API ============
+
+export interface Collection {
+  id: string;
+  title: string;
+  handle: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionsResponse {
+  collections: Collection[];
+  count: number;
+}
+
+export async function getCollections(): Promise<CollectionsResponse> {
+  const url = `${BACKEND_URL}/store/collections?limit=50`;
+  const res = await fetch(url, {
+    headers: {
+      'x-publishable-api-key': PUBLISHABLE_KEY,
+    },
+    next: { revalidate: 3600 },
+  });
+
+  if (!res.ok) {
+    return { collections: [], count: 0 };
+  }
+
+  return res.json();
 }
 
 // ============ 購物車 API ============

@@ -23,18 +23,26 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 animate-fade-in"
+        className="fixed inset-0 z-50 animate-fade-in"
+        style={{ background: 'rgba(0,0,0,0.7)' }}
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-xl animate-slide-in-right flex flex-col">
+      <div
+        className="fixed right-0 top-0 h-full w-full max-w-md z-50 shadow-xl animate-slide-in-right flex flex-col"
+        style={{ background: '#0a0a0a' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold">購物車</h2>
+        <div
+          className="flex items-center justify-between p-4"
+          style={{ borderBottom: '1px solid rgba(212,175,55,0.2)' }}
+        >
+          <h2 className="text-lg font-bold gold-text">購物車</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'rgba(255,255,255,0.6)' }}
             aria-label="關閉"
           >
             <svg
@@ -43,7 +51,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
-              className="w-6 h-6"
+              className="w-6 h-6 hover:text-gold"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -52,14 +60,21 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
         {/* 免運提示 */}
         {!isFreeShipping && amountToFreeShipping > 0 && (
-          <div className="bg-secondary px-4 py-3 text-sm">
-            <p>
-              再買 <span className="font-bold text-accent">{formatPrice(amountToFreeShipping)}</span> 即可免運！
+          <div
+            className="px-4 py-3 text-sm"
+            style={{ background: 'rgba(212,175,55,0.08)', borderBottom: '1px solid rgba(212,175,55,0.1)' }}
+          >
+            <p style={{ color: 'rgba(255,255,255,0.7)' }}>
+              再買 <span className="font-bold text-gold">{formatPrice(amountToFreeShipping)}</span> 即可免運！
             </p>
-            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="mt-2 h-2 rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.1)' }}
+            >
               <div
-                className="h-full bg-accent transition-all duration-300"
+                className="h-full transition-all duration-300"
                 style={{
+                  background: 'linear-gradient(90deg, #D4AF37, #FFD700)',
                   width: `${Math.min((subtotal / config.shipping.freeShippingThreshold) * 100, 100)}%`,
                 }}
               />
@@ -68,7 +83,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         )}
 
         {isFreeShipping && (
-          <div className="bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div
+            className="px-4 py-3 text-sm"
+            style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37' }}
+          >
             🎉 已達免運門檻！
           </div>
         )}
@@ -77,7 +95,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         <div className="flex-grow overflow-y-auto p-4">
           {isLoading && !cart ? (
             <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              <div
+                className="animate-spin rounded-full h-8 w-8 border-b-2"
+                style={{ borderColor: '#D4AF37' }}
+              />
             </div>
           ) : !cart?.items?.length ? (
             <div className="text-center py-12">
@@ -87,7 +108,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
                 stroke="currentColor"
-                className="w-16 h-16 mx-auto text-gray-300 mb-4"
+                className="w-16 h-16 mx-auto mb-4"
+                style={{ color: 'rgba(255,255,255,0.2)' }}
               >
                 <path
                   strokeLinecap="round"
@@ -95,17 +117,24 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
                 />
               </svg>
-              <p className="text-gray-500">購物車是空的</p>
-              <button onClick={onClose} className="btn-primary mt-4">
+              <p style={{ color: 'rgba(255,255,255,0.5)' }}>購物車是空的</p>
+              <button onClick={onClose} className="btn-gold mt-4 px-6 py-2">
                 繼續購物
               </button>
             </div>
           ) : (
             <ul className="space-y-4">
               {cart.items.map((item) => (
-                <li key={item.id} className="flex gap-4">
+                <li
+                  key={item.id}
+                  className="flex gap-4 pb-4"
+                  style={{ borderBottom: '1px solid rgba(212,175,55,0.1)' }}
+                >
                   {/* 商品圖片 */}
-                  <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                  <div
+                    className="w-20 h-20 rounded overflow-hidden flex-shrink-0"
+                    style={{ background: '#111', border: '1px solid rgba(212,175,55,0.2)' }}
+                  >
                     {item.thumbnail ? (
                       <Image
                         src={item.thumbnail}
@@ -115,7 +144,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ color: 'rgba(255,255,255,0.2)' }}
+                      >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
@@ -136,11 +168,18 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                   {/* 商品資訊 */}
                   <div className="flex-grow min-w-0">
-                    <h4 className="font-medium text-sm truncate">{item.title}</h4>
+                    <h4
+                      className="font-medium text-sm truncate"
+                      style={{ color: 'rgba(255,255,255,0.9)' }}
+                    >
+                      {item.title}
+                    </h4>
                     {item.variant?.title && item.variant.title !== item.title && (
-                      <p className="text-xs text-gray-500">{item.variant.title}</p>
+                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        {item.variant.title}
+                      </p>
                     )}
-                    <p className="text-sm font-bold mt-1">
+                    <p className="text-sm font-bold mt-1 text-gold">
                       {formatPrice(item.unit_price)}
                     </p>
 
@@ -148,22 +187,36 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => updateItem(item.id, item.quantity - 1)}
-                        className="w-7 h-7 flex items-center justify-center border rounded hover:bg-gray-100"
+                        className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+                        style={{
+                          border: '1px solid rgba(212,175,55,0.3)',
+                          color: 'rgba(255,255,255,0.8)',
+                        }}
                         disabled={isLoading}
                       >
                         -
                       </button>
-                      <span className="w-8 text-center text-sm">{item.quantity}</span>
+                      <span
+                        className="w-8 text-center text-sm"
+                        style={{ color: 'rgba(255,255,255,0.9)' }}
+                      >
+                        {item.quantity}
+                      </span>
                       <button
                         onClick={() => updateItem(item.id, item.quantity + 1)}
-                        className="w-7 h-7 flex items-center justify-center border rounded hover:bg-gray-100"
+                        className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+                        style={{
+                          border: '1px solid rgba(212,175,55,0.3)',
+                          color: 'rgba(255,255,255,0.8)',
+                        }}
                         disabled={isLoading}
                       >
                         +
                       </button>
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="ml-auto text-gray-400 hover:text-red-500"
+                        className="ml-auto hover:text-red-400 transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.4)' }}
                         aria-label="移除"
                         disabled={isLoading}
                       >
@@ -192,11 +245,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
         {/* Footer */}
         {cart?.items?.length ? (
-          <div className="border-t p-4 space-y-4">
+          <div
+            className="p-4 space-y-4"
+            style={{ borderTop: '1px solid rgba(212,175,55,0.2)' }}
+          >
             {/* 小計 */}
             <div className="flex justify-between text-lg font-bold">
-              <span>小計</span>
-              <span>{formatPrice(subtotal)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>小計</span>
+              <span className="gold-text">{formatPrice(subtotal)}</span>
             </div>
 
             {/* 結帳按鈕 */}
@@ -204,19 +260,23 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <Link
                 href="/checkout"
                 onClick={onClose}
-                className="btn-primary w-full text-center"
+                className="btn-gold w-full text-center block py-3"
               >
                 前往結帳
               </Link>
             ) : (
-              <button disabled className="btn-secondary w-full opacity-50 cursor-not-allowed">
+              <button
+                disabled
+                className="w-full py-3 rounded opacity-50 cursor-not-allowed"
+                style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+              >
                 結帳功能開發中
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="btn-secondary w-full"
+              className="btn-gold-outline w-full py-3"
             >
               繼續購物
             </button>

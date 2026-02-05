@@ -21,7 +21,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
   // 找到符合選擇的 variant
   const selectedVariant = useMemo(() => {
     if (!product.variants?.length) return null;
-    
+
     // 如果只有一個 variant，直接返回
     if (product.variants.length === 1) {
       return product.variants[0];
@@ -70,7 +70,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
       setMessage(null);
       await addItem(selectedVariant.id, quantity);
       setMessage({ type: 'success', text: '已加入購物車！' });
-      
+
       // 3 秒後清除訊息
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -86,7 +86,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         {/* 圖片區 */}
         <div className="space-y-4">
           {/* 主圖 */}
-          <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
+          <div className="aspect-square relative bg-black rounded-lg overflow-hidden border border-gold/20">
             {images[activeImageIndex] ? (
               <Image
                 src={images[activeImageIndex].url}
@@ -97,7 +97,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                 priority
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <div className="w-full h-full flex items-center justify-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -123,9 +123,12 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                 <button
                   key={image.id}
                   onClick={() => setActiveImageIndex(index)}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                    index === activeImageIndex ? 'border-primary' : 'border-transparent'
-                  }`}
+                  className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-colors"
+                  style={{
+                    border: index === activeImageIndex
+                      ? '2px solid rgba(212,175,55,0.6)'
+                      : '2px solid rgba(212,175,55,0.2)',
+                  }}
                 >
                   <Image
                     src={image.url}
@@ -144,24 +147,34 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         <div className="space-y-6">
           {/* 標題 */}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{product.title}</h1>
+            <h1
+              className="text-2xl md:text-3xl font-bold"
+              style={{ color: 'rgba(255,255,255,0.9)' }}
+            >
+              {product.title}
+            </h1>
             {selectedVariant?.sku && (
-              <p className="text-sm text-gray-500 mt-1">SKU: {selectedVariant.sku}</p>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                SKU: {selectedVariant.sku}
+              </p>
             )}
           </div>
 
           {/* 價格 */}
           <div className="flex items-center gap-3">
             {showDiscount && originalPrice && (
-              <span className="text-xl text-gray-400 line-through">
+              <span className="text-xl line-through" style={{ color: 'rgba(255,255,255,0.3)' }}>
                 {formatPrice(originalPrice)}
               </span>
             )}
-            <span className={`text-2xl font-bold ${showDiscount ? 'text-accent' : ''}`}>
+            <span className="text-2xl font-bold gold-text">
               {formatPrice(price)}
             </span>
             {showDiscount && (
-              <span className="bg-accent text-white text-sm px-2 py-1 rounded">
+              <span
+                className="text-sm px-2 py-1 rounded font-medium"
+                style={{ background: '#D4AF37', color: '#000' }}
+              >
                 特價
               </span>
             )}
@@ -170,39 +183,60 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           {/* 選項 */}
           {product.options?.map((option) => (
             <div key={option.id}>
-              <label className="block font-medium mb-2">{option.title}</label>
+              <label
+                className="block font-medium mb-2"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                {option.title}
+              </label>
               <div className="flex flex-wrap gap-2">
-                {option.values.map((value) => (
-                  <button
-                    key={value.id}
-                    onClick={() => handleOptionChange(option.id, value.value)}
-                    className={`px-4 py-2 border rounded-lg transition-colors ${
-                      selectedOptions[option.id] === value.value
-                        ? 'border-primary bg-primary text-white'
-                        : 'border-gray-300 hover:border-gray-500'
-                    }`}
-                  >
-                    {value.value}
-                  </button>
-                ))}
+                {option.values.map((value) => {
+                  const isSelected = selectedOptions[option.id] === value.value;
+                  return (
+                    <button
+                      key={value.id}
+                      onClick={() => handleOptionChange(option.id, value.value)}
+                      className="px-4 py-2 rounded-lg transition-all"
+                      style={
+                        isSelected
+                          ? { background: '#D4AF37', color: '#000', fontWeight: 500 }
+                          : { border: '1px solid rgba(212,175,55,0.2)', color: 'rgba(255,255,255,0.8)' }
+                      }
+                    >
+                      {value.value}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
 
           {/* 數量 */}
           <div>
-            <label className="block font-medium mb-2">數量</label>
+            <label
+              className="block font-medium mb-2"
+              style={{ color: 'rgba(255,255,255,0.7)' }}
+            >
+              數量
+            </label>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 flex items-center justify-center border rounded-lg hover:bg-gray-100"
+                className="w-10 h-10 flex items-center justify-center rounded-lg transition-all hover:bg-gold/10"
+                style={{ border: '1px solid rgba(212,175,55,0.3)', color: 'rgba(255,255,255,0.8)' }}
               >
                 -
               </button>
-              <span className="w-12 text-center text-lg font-medium">{quantity}</span>
+              <span
+                className="w-12 text-center text-lg font-medium"
+                style={{ color: 'rgba(255,255,255,0.9)' }}
+              >
+                {quantity}
+              </span>
               <button
                 onClick={() => setQuantity((q) => q + 1)}
-                className="w-10 h-10 flex items-center justify-center border rounded-lg hover:bg-gray-100"
+                className="w-10 h-10 flex items-center justify-center rounded-lg transition-all hover:bg-gold/10"
+                style={{ border: '1px solid rgba(212,175,55,0.3)', color: 'rgba(255,255,255,0.8)' }}
               >
                 +
               </button>
@@ -213,7 +247,9 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           {message && (
             <div
               className={`p-3 rounded-lg ${
-                message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                message.type === 'success'
+                  ? 'bg-green-900/50 text-green-300 border border-green-700'
+                  : 'bg-red-900/50 text-red-300 border border-red-700'
               }`}
             >
               {message.text}
@@ -224,24 +260,30 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           <button
             onClick={handleAddToCart}
             disabled={isAdding || isLoading || !config.features.cart}
-            className="btn-primary w-full py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-gold w-full py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isAdding ? '加入中...' : '加入購物車'}
           </button>
 
           {/* 免運提示 */}
           {config.shipping.freeShippingThreshold > 0 && (
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
               🚚 滿 {formatPrice(config.shipping.freeShippingThreshold)} 免運費
             </p>
           )}
 
           {/* 商品描述 */}
           {product.description && (
-            <div className="border-t pt-6">
-              <h2 className="font-bold mb-3">商品說明</h2>
+            <div className="border-t border-gold/20 pt-6">
+              <h2
+                className="font-bold mb-3"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                商品說明
+              </h2>
               <div
-                className="prose prose-sm max-w-none text-gray-600"
+                className="prose prose-sm max-w-none prose-invert"
+                style={{ color: 'rgba(255,255,255,0.55)' }}
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>

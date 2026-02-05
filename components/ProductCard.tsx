@@ -15,9 +15,9 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.handle}`} className="group">
-      <div className="card overflow-hidden">
+      <div className="gold-card overflow-hidden">
         {/* 商品圖片 */}
-        <div className="aspect-square relative bg-gray-100 overflow-hidden">
+        <div className="aspect-square relative bg-black overflow-hidden">
           {product.thumbnail ? (
             <Image
               src={product.thumbnail}
@@ -27,7 +27,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <div className="w-full h-full flex items-center justify-center text-gray-600">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -44,10 +44,10 @@ export default function ProductCard({ product }: ProductCardProps) {
               </svg>
             </div>
           )}
-          
+
           {/* 折扣標籤 */}
           {showDiscount && (
-            <div className="absolute top-2 left-2 bg-accent text-white text-xs px-2 py-1 rounded">
+            <div className="absolute top-2 left-2 bg-gold text-black text-xs px-2 py-1 rounded font-medium">
               特價
             </div>
           )}
@@ -55,21 +55,21 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* 商品資訊 */}
         <div className="p-4">
-          <h3 className="font-medium text-gray-900 truncate group-hover:text-primary transition-colors">
+          <h3 className="font-medium text-gray-100 truncate group-hover:text-gold transition-colors">
             {product.title}
           </h3>
-          
+
           <div className="mt-2 flex items-center gap-2">
             {showDiscount && originalPrice && (
-              <span className="price-original">
+              <span className="text-gray-500 line-through text-sm">
                 {formatPrice(originalPrice)}
               </span>
             )}
-            <span className={showDiscount ? 'price-sale' : 'price'}>
+            <span className={`text-lg font-bold ${showDiscount ? 'text-gold' : 'text-gold'}`}>
               {formatPrice(lowestPrice)}
             </span>
           </div>
-          
+
           {/* 多變體提示 */}
           {product.variants?.length > 1 && (
             <p className="text-xs text-gray-500 mt-1">

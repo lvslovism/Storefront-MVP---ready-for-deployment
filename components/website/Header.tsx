@@ -2,18 +2,18 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { config } from '@/lib/config';
-import { useCart } from './CartProvider';
-import CartDrawer from './CartDrawer';
 import { useState } from 'react';
+import { config } from '@/lib/config';
+import { useCart } from '@/components/CartProvider';
+import CartDrawer from '@/components/CartDrawer';
 
-export default function Header() {
+export default function WebsiteHeader() {
   const { itemCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-gold/20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -27,13 +27,22 @@ export default function Header() {
                   className="h-8 w-auto"
                 />
               ) : (
-                <span className="text-xl font-bold">{config.store.name}</span>
+                <span className="text-xl font-bold gold-text">{config.store.name}</span>
               )}
             </Link>
 
             {/* 導航 */}
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link href="/" className="text-gray-600 hover:text-primary transition-colors">
+            <nav className="hidden md:flex items-center space-x-8">
+              <Link
+                href="/"
+                className="text-gray-300 hover:text-gold transition-colors"
+              >
+                首頁
+              </Link>
+              <Link
+                href="/products"
+                className="text-gray-300 hover:text-gold transition-colors"
+              >
                 全部商品
               </Link>
               {config.contact.lineOA && (
@@ -41,7 +50,7 @@ export default function Header() {
                   href={config.contact.lineOA}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-primary transition-colors"
+                  className="text-gray-300 hover:text-line-green transition-colors"
                 >
                   LINE 客服
                 </a>
@@ -52,7 +61,7 @@ export default function Header() {
             {config.features.cart && (
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="relative p-2 border border-gold/30 rounded-full hover:border-gold/60 hover:bg-gold/10 transition-all"
                 aria-label="購物車"
               >
                 <svg
@@ -61,7 +70,7 @@ export default function Header() {
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
-                  className="w-6 h-6"
+                  className="w-6 h-6 text-gold"
                 >
                   <path
                     strokeLinecap="round"
@@ -70,7 +79,7 @@ export default function Header() {
                   />
                 </svg>
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-gold text-black text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
                     {itemCount > 99 ? '99+' : itemCount}
                   </span>
                 )}
