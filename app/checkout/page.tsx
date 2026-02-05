@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -23,6 +23,26 @@ interface FormData {
   cvsType: CvsType;
 }
 
+// SessionStorage keys
+const STORAGE_KEYS = {
+  TEMP_TRADE_NO: 'cvs_temp_trade_no',
+  FORM_DATA: 'checkout_form_data',
+  SHIPPING_METHOD: 'checkout_shipping_method',
+};
+
+// 偵測是否為手機裝置
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  // 檢查螢幕寬度
+  if (window.innerWidth < 768) return true;
+
+  // 檢查 userAgent
+  const userAgent = navigator.userAgent.toLowerCase();
+  const mobileKeywords = ['android', 'iphone', 'ipad', 'ipod', 'mobile', 'webos', 'blackberry', 'opera mini', 'iemobile'];
+  return mobileKeywords.some(keyword => userAgent.includes(keyword));
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, isLoading: cartLoading } = useCart();
@@ -41,7 +61,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSelectingStore, setIsSelectingStore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -49,6 +69,79 @@ export default function CheckoutPage() {
   const subtotal = cart?.subtotal || 0;
   const shippingFee = getShippingFee(shippingMethod, subtotal);
   const total = subtotal + shippingFee;
+
+  // Polling 取得門市選擇結果
+  const pollCvsSelection = useCallback(async (tempTradeNo: string, maxAttempts = 30) => {
+    let attempts = 0;
+
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setIsSelectingStore(false);
+        sessionStorage.removeItem(STORAGE_KEYS.TEMP_TRADE_NO);
+        return;
+      }
+
+      attempts++;
+
+      try {
+        const selection = await getCvsSelection(tempTradeNo);
+        console.log('Polling result:', selection);
+
+        if (selection.success && selection.selection?.store_id) {
+          // 選完了！
+          setCvsSelection(selection.selection);
+          setIsSelectingStore(false);
+          sessionStorage.removeItem(STORAGE_KEYS.TEMP_TRADE_NO);
+
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          return;
+        }
+      } catch (e) {
+        // 還沒選完，繼續等
+      }
+    };
+
+    // 立即執行一次
+    await poll();
+
+    // 如果還沒選完，設定 interval
+    if (!cvsSelection) {
+      pollingRef.current = setInterval(poll, 2000);
+    }
+  }, [cvsSelection]);
+
+  // 頁面載入時：檢查是否從手機版地圖選擇返回
+  useEffect(() => {
+    // 還原表單資料
+    const savedFormData = sessionStorage.getItem(STORAGE_KEYS.FORM_DATA);
+    const savedShippingMethod = sessionStorage.getItem(STORAGE_KEYS.SHIPPING_METHOD);
+
+    if (savedFormData) {
+      try {
+        setFormData(JSON.parse(savedFormData));
+      } catch (e) {
+        console.error('Failed to parse saved form data');
+      }
+    }
+
+    if (savedShippingMethod) {
+      setShippingMethod(savedShippingMethod as ShippingMethod);
+    }
+
+    // 檢查是否有待處理的門市選擇
+    const tempTradeNo = sessionStorage.getItem(STORAGE_KEYS.TEMP_TRADE_NO);
+    if (tempTradeNo) {
+      setIsSelectingStore(true);
+      pollCvsSelection(tempTradeNo);
+    }
+
+    // 清理表單暫存（但保留 tempTradeNo 直到選完）
+    sessionStorage.removeItem(STORAGE_KEYS.FORM_DATA);
+    sessionStorage.removeItem(STORAGE_KEYS.SHIPPING_METHOD);
+  }, [pollCvsSelection]);
 
   // 清理 polling
   useEffect(() => {
@@ -65,31 +158,65 @@ export default function CheckoutPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 開啟超商地圖（Popup 方式）
+  // 開啟超商地圖（根據裝置類型選擇方式）
   const handleOpenCvsMap = async () => {
     try {
       setError(null);
       setIsSelectingStore(true);
-      
+
+      const isMobile = isMobileDevice();
+      let mapWindow: Window | null = null;
+
+      // ===== 桌面版：先開空白視窗（避免被 popup blocker 攔截）=====
+      if (!isMobile) {
+        mapWindow = window.open('about:blank', 'cvsMap', 'width=900,height=700,scrollbars=yes,resizable=yes');
+
+        // 顯示載入提示
+        if (mapWindow) {
+          mapWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>超商地圖</title></head>
+            <body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui,sans-serif;background:#f5f5f5;">
+              <div style="text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">🗺️</div>
+                <div style="font-size:18px;color:#333;">正在開啟地圖...</div>
+                <div style="font-size:14px;color:#666;margin-top:8px;">請稍候</div>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+      }
+
+      // 呼叫 API 取得地圖 URL
       const res = await getCvsMap({
         cvs_type: formData.cvsType,
       });
-      
+
       if (res.success && res.map_url) {
         const tempTradeNo = res.temp_trade_no;
-        
-        // 用 popup 開啟地圖（不離開結帳頁面）
-        const mapWindow = window.open(
-          res.map_url, 
-          'cvsMap', 
-          'width=900,height=700,scrollbars=yes,resizable=yes'
-        );
-        
+
+        // ===== 手機版 或 桌面版被攔截：直接跳轉 =====
+        if (isMobile || !mapWindow) {
+          // 儲存表單資料和 tempTradeNo
+          sessionStorage.setItem(STORAGE_KEYS.TEMP_TRADE_NO, tempTradeNo);
+          sessionStorage.setItem(STORAGE_KEYS.FORM_DATA, JSON.stringify(formData));
+          sessionStorage.setItem(STORAGE_KEYS.SHIPPING_METHOD, shippingMethod);
+
+          // 直接跳轉到綠界地圖
+          window.location.href = res.map_url;
+          return;
+        }
+
+        // ===== 桌面版：導向地圖 URL =====
+        mapWindow.location.href = res.map_url;
+
         // 清除之前的 polling
         if (pollingRef.current) {
           clearInterval(pollingRef.current);
         }
-        
+
         // 每 2 秒檢查是否選完門市
         pollingRef.current = setInterval(async () => {
           try {
@@ -100,15 +227,16 @@ export default function CheckoutPage() {
               setIsSelectingStore(false);
               return;
             }
-            
+
             const selection = await getCvsSelection(tempTradeNo);
-console.log('Polling result:', selection);  // 加這行
-if (selection.success && selection.selection?.store_id) {
+            console.log('Polling result:', selection);
+
+            if (selection.success && selection.selection?.store_id) {
               // 選完了！
               clearInterval(pollingRef.current!);
               pollingRef.current = null;
               mapWindow?.close();
-              
+
               setCvsSelection(selection.selection);
               setIsSelectingStore(false);
             }
@@ -116,7 +244,7 @@ if (selection.success && selection.selection?.store_id) {
             // 還沒選完，繼續等
           }
         }, 2000);
-        
+
         // 60 秒後停止檢查（timeout）
         setTimeout(() => {
           if (pollingRef.current) {
@@ -125,8 +253,10 @@ if (selection.success && selection.selection?.store_id) {
             setIsSelectingStore(false);
           }
         }, 60000);
-        
+
       } else {
+        // API 失敗，關閉空白視窗
+        mapWindow?.close();
         setError('開啟超商地圖失敗，請稍後再試');
         setIsSelectingStore(false);
       }
@@ -151,7 +281,7 @@ if (selection.success && selection.selection?.store_id) {
       setError('請輸入正確的 Email 格式');
       return false;
     }
-    
+
     if (shippingMethod === 'cvs') {
       if (!cvsSelection) {
         setError('請選擇取貨門市');
@@ -163,14 +293,14 @@ if (selection.success && selection.selection?.store_id) {
         return false;
       }
     }
-    
+
     return true;
   };
 
   // 提交結帳
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!cart?.items?.length) {
       setError('購物車是空的');
       return;
@@ -203,11 +333,11 @@ if (selection.success && selection.selection?.store_id) {
           shipping_fee: shippingFee,
           // 超取資訊
           ...(shippingMethod === 'cvs' && cvsSelection && {
-  cvs_type: formData.cvsType,
-  cvs_store_id: cvsSelection.store_id,
-  cvs_store_name: cvsSelection.store_name,
-  cvs_address: cvsSelection.address,
-}),
+            cvs_type: formData.cvsType,
+            cvs_store_id: cvsSelection.store_id,
+            cvs_store_name: cvsSelection.store_name,
+            cvs_address: cvsSelection.address,
+          }),
           // 宅配資訊
           ...(shippingMethod === 'home' && {
             address: formData.address,
@@ -302,7 +432,7 @@ if (selection.success && selection.selection?.store_id) {
             {/* 物流方式 */}
             <section className="card p-6">
               <h2 className="text-lg font-bold mb-4">物流方式</h2>
-              
+
               {/* 物流選項 */}
               <div className="flex gap-4 mb-6">
                 {config.features.cvsLogistics && (
@@ -374,11 +504,11 @@ if (selection.success && selection.selection?.store_id) {
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="font-medium text-green-800">
-  ✅ {cvsSelection.store_name}
-</p>
-<p className="text-sm text-green-600 mt-1">
-  {cvsSelection.address}
-</p>
+                              ✅ {cvsSelection.store_name}
+                            </p>
+                            <p className="text-sm text-green-600 mt-1">
+                              {cvsSelection.address}
+                            </p>
                           </div>
                           <button
                             type="button"
@@ -400,7 +530,7 @@ if (selection.success && selection.selection?.store_id) {
                         {isSelectingStore ? (
                           <>
                             <span className="inline-block animate-spin mr-2">⏳</span>
-                            選擇門市中...（請在彈出視窗完成選擇）
+                            正在取得門市資訊...
                           </>
                         ) : (
                           '🗺️ 選擇取貨門市'
