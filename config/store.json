@@ -1,0 +1,54 @@
+{
+  "store": {
+    "name": "敏捷商店",
+    "shortName": "敏捷",
+    "description": "AI 驅動的電商解決方案",
+    "domain": "shop.minjie0326.com",
+    "logo": "/tenant/logo.png",
+    "favicon": "/tenant/favicon.ico"
+  },
+  "theme": {
+    "primaryColor": "#000000",
+    "secondaryColor": "#f5f5f5",
+    "accentColor": "#dc2626",
+    "fontFamily": "system-ui, -apple-system, sans-serif",
+    "borderRadius": "0.5rem"
+  },
+  "medusa": {
+    "backendUrl": "https://medusa-store-minjie-production.up.railway.app",
+    "publishableKey": "pk_9e9c701859cf64dcc2679cb893ae10055f19f3aaa941eb7bcc95493e20256eb2",
+    "regionId": "reg_01KFFT966Q197EXXNSKR3J8Q5T",
+    "salesChannelId": "sc_01KG0DSC3T1GFK921DB7P7251N"
+  },
+  "gateway": {
+    "url": "https://ecpay-gateway-production.up.railway.app",
+    "paymentApiKey": "gk_1e301592bab9a09f42b572a839492a2e29f1fac8a642946e482f9938a60c7b5b",
+    "logisticsApiKey": "gk_ff72ac9636b547d395c68f583645ff584bcc01022cdc6075a38c13cc06a39167"
+  },
+  "features": {
+    "cart": true,
+    "checkout": true,
+    "cvsLogistics": true,
+    "homeDelivery": true,
+    "linePay": false,
+    "memberSystem": false
+  },
+  "shipping": {
+    "freeShippingThreshold": 1000,
+    "cvsOptions": ["UNIMARTC2C", "FAMIC2C", "HILIFEC2C"],
+    "homeDeliveryFee": 100,
+    "cvsFee": 60
+  },
+  "contact": {
+    "email": "support@minjie0326.com",
+    "phone": "",
+    "lineOA": "",
+    "instagram": "",
+    "facebook": ""
+  },
+  "seo": {
+    "title": "敏捷商店 | AI 電商解決方案",
+    "description": "專業的電商建站服務，快速上線您的網路商店",
+    "ogImage": "/tenant/og-image.png"
+  }
+}
