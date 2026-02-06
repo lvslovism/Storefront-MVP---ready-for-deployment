@@ -272,15 +272,30 @@ export interface PaymentInitResult {
   error?: string;
 }
 
+export interface CustomerInfo {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+}
+
 /**
  * 初始化 Payment（透過 Next.js API Route 避免 CORS）
  * POST /api/payment/init → Medusa payment collection + session
+ * @param cartId - Medusa cart ID
+ * @param customerInfo - Optional customer info to update cart
  */
-export async function initPaymentForCart(cartId: string): Promise<PaymentInitResult> {
+export async function initPaymentForCart(
+  cartId: string,
+  customerInfo?: CustomerInfo
+): Promise<PaymentInitResult> {
   const res = await fetch('/api/payment/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cartId }),
+    body: JSON.stringify({ cartId, customerInfo }),
   });
 
   const data = await res.json();

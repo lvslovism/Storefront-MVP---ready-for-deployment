@@ -315,8 +315,20 @@ export default function CheckoutPage() {
       setError(null);
 
       // 1. 初始化 Medusa Payment Collection（讓 cart 可以被 complete）
+      // 同時更新 cart 的顧客資料
       console.log('[Checkout] Initializing payment for cart:', cart.id);
-      const paymentResult = await initPaymentForCart(cart.id);
+      const customerInfo = {
+        firstName: formData.name,
+        lastName: '.',  // 台灣不分 first/last name
+        email: formData.email || undefined,
+        phone: formData.phone,
+        address: shippingMethod === 'cvs'
+          ? (cvsSelection?.address || '超商取貨')
+          : (formData.address || ''),
+        city: shippingMethod === 'cvs' ? 'Taiwan' : (formData.city || 'Taiwan'),
+        postalCode: shippingMethod === 'home' ? formData.zipCode : '000',
+      };
+      const paymentResult = await initPaymentForCart(cart.id, customerInfo);
       console.log('[Checkout] Payment initialized:', paymentResult);
 
       if (!paymentResult.success) {
