@@ -24,13 +24,14 @@ export async function POST(request: NextRequest) {
 
     // 1. Initialize payment collection
     const collectionRes = await fetch(
-      `${BACKEND_URL}/store/carts/${cartId}/payment-collections`,
+      `${BACKEND_URL}/store/payment-collections`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-publishable-api-key': PUBLISHABLE_KEY,
         },
+        body: JSON.stringify({ cart_id: cartId }),
       }
     );
 
