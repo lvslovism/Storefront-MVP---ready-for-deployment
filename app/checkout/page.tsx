@@ -315,17 +315,12 @@ export default function CheckoutPage() {
       setError(null);
 
       // 1. 初始化 Medusa Payment Collection（讓 cart 可以被 complete）
-      console.log('Initializing payment collection for cart:', cart.id);
-      try {
-        const { paymentCollection, paymentSession } = await initPaymentForCart(cart.id);
-        console.log('Payment initialized:', {
-          collectionId: paymentCollection.id,
-          sessionId: paymentSession.id,
-          provider: paymentSession.provider_id,
-        });
-      } catch (paymentErr: any) {
-        // 如果已經有 payment collection，忽略錯誤繼續
-        console.warn('Payment init warning (may already exist):', paymentErr.message);
+      console.log('[Checkout] Initializing payment for cart:', cart.id);
+      const paymentResult = await initPaymentForCart(cart.id);
+      console.log('[Checkout] Payment initialized:', paymentResult);
+
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Payment initialization failed');
       }
 
       // 2. 組合商品名稱

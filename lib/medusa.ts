@@ -264,72 +264,32 @@ export async function updateCart(
 
 // ============ Payment Collection API ============
 
-export interface PaymentCollection {
-  id: string;
-  currency_code: string;
-  amount: number;
-  status: string;
-  payment_sessions?: PaymentSession[];
-}
-
-export interface PaymentSession {
-  id: string;
-  provider_id: string;
-  status: string;
-  data: Record<string, unknown>;
+export interface PaymentInitResult {
+  success: boolean;
+  collectionId?: string;
+  sessionId?: string;
+  provider?: string;
+  error?: string;
 }
 
 /**
- * 初始化 Cart 的 Payment Collection
- * POST /store/carts/{id}/payment-collections
+ * 初始化 Payment（透過 Next.js API Route 避免 CORS）
+ * POST /api/payment/init → Medusa payment collection + session
  */
-export async function initPaymentCollection(
-  cartId: string
-): Promise<{ payment_collection: PaymentCollection }> {
-  return medusaFetch<{ payment_collection: PaymentCollection }>(
-    `/store/carts/${cartId}/payment-collections`,
-    { method: 'POST' }
-  );
-}
+export async function initPaymentForCart(cartId: string): Promise<PaymentInitResult> {
+  const res = await fetch('/api/payment/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cartId }),
+  });
 
-/**
- * 建立 Payment Session
- * POST /store/payment-collections/{id}/payment-sessions
- */
-export async function createPaymentSession(
-  paymentCollectionId: string,
-  providerId: string
-): Promise<{ payment_session: PaymentSession }> {
-  return medusaFetch<{ payment_session: PaymentSession }>(
-    `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ provider_id: providerId }),
-    }
-  );
-}
+  const data = await res.json();
 
-/**
- * 初始化 Payment（便利函數：初始化 collection + 建立 session）
- * 使用 pp_system_default provider
- */
-export async function initPaymentForCart(cartId: string): Promise<{
-  paymentCollection: PaymentCollection;
-  paymentSession: PaymentSession;
-}> {
-  // 1. 初始化 payment collection
-  const { payment_collection } = await initPaymentCollection(cartId);
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Payment initialization failed');
+  }
 
-  // 2. 建立 payment session with system provider
-  const { payment_session } = await createPaymentSession(
-    payment_collection.id,
-    'pp_system_default'
-  );
-
-  return {
-    paymentCollection: payment_collection,
-    paymentSession: payment_session,
-  };
+  return data;
 }
 
 // ============ 工具函式 ============
