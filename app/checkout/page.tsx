@@ -323,7 +323,7 @@ export default function CheckoutPage() {
       const res = await createCheckout({
         amount: total,
         item_name: itemName,
-        order_id: `cart_${cart.id}`,
+        order_id: cart.id, // Medusa v2 cart.id 已經是 cart_xxx 格式
         customer_name: formData.name,
         customer_phone: formData.phone,
         customer_email: formData.email || undefined,
