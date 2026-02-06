@@ -4,10 +4,15 @@ import { medusa } from '@/lib/config';
 const BACKEND_URL = medusa.backendUrl;
 const PUBLISHABLE_KEY = medusa.publishableKey;
 
+// 外部配送 shipping option（由 ECPay 處理，0 元）
+const EXTERNAL_SHIPPING_OPTION_ID = 'so_01KGT10N7MH9ACTVKJE5G223G8';
+
 /**
  * POST /api/payment/init
- * Server-side proxy for Medusa payment collection initialization
- * Avoids CORS issues by running on the server
+ * Server-side proxy for Medusa cart checkout initialization
+ * 1. Add shipping method to cart
+ * 2. Initialize payment collection
+ * 3. Create payment session with pp_system_default
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +27,38 @@ export async function POST(request: NextRequest) {
 
     console.log('[Payment Init] Starting for cart:', cartId);
 
-    // 1. Initialize payment collection
+    // 1. Add shipping method to cart
+    console.log('[Payment Init] Adding shipping method...');
+    const shippingRes = await fetch(
+      `${BACKEND_URL}/store/carts/${cartId}/shipping-methods`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-publishable-api-key': PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ option_id: EXTERNAL_SHIPPING_OPTION_ID }),
+      }
+    );
+
+    if (!shippingRes.ok) {
+      const errorData = await shippingRes.json().catch(() => ({}));
+      console.error('[Payment Init] Failed to add shipping method:', errorData);
+      return NextResponse.json(
+        {
+          success: false,
+          error: errorData.message || `Failed to add shipping method: ${shippingRes.status}`
+        },
+        { status: shippingRes.status }
+      );
+    }
+
+    const shippingData = await shippingRes.json();
+    const shippingMethodId = shippingData.cart?.shipping_methods?.[0]?.id;
+    console.log('[Payment Init] Shipping method added:', shippingMethodId);
+
+    // 2. Initialize payment collection
+    console.log('[Payment Init] Creating payment collection...');
     const collectionRes = await fetch(
       `${BACKEND_URL}/store/payment-collections`,
       {
@@ -60,7 +96,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[Payment Init] Collection created:', paymentCollectionId);
 
-    // 2. Create payment session with pp_system_default
+    // 3. Create payment session with pp_system_default
+    console.log('[Payment Init] Creating payment session...');
     const sessionRes = await fetch(
       `${BACKEND_URL}/store/payment-collections/${paymentCollectionId}/payment-sessions`,
       {
@@ -89,9 +126,11 @@ export async function POST(request: NextRequest) {
     const paymentSessionId = sessionData.payment_session?.id;
 
     console.log('[Payment Init] Session created:', paymentSessionId);
+    console.log('[Payment Init] All steps completed successfully');
 
     return NextResponse.json({
       success: true,
+      shippingMethodId,
       collectionId: paymentCollectionId,
       sessionId: paymentSessionId,
       provider: 'pp_system_default',
