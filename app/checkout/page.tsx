@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useCart } from '@/components/CartProvider';
 import { formatPrice, config, shipping, isFreeShipping, getShippingFee } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
+import { initPaymentForCart } from '@/lib/medusa';
 
 type ShippingMethod = 'cvs' | 'home';
 type CvsType = 'UNIMARTC2C' | 'FAMIC2C' | 'HILIFEC2C';
@@ -313,13 +314,27 @@ export default function CheckoutPage() {
       setIsSubmitting(true);
       setError(null);
 
-      // 組合商品名稱
+      // 1. 初始化 Medusa Payment Collection（讓 cart 可以被 complete）
+      console.log('Initializing payment collection for cart:', cart.id);
+      try {
+        const { paymentCollection, paymentSession } = await initPaymentForCart(cart.id);
+        console.log('Payment initialized:', {
+          collectionId: paymentCollection.id,
+          sessionId: paymentSession.id,
+          provider: paymentSession.provider_id,
+        });
+      } catch (paymentErr: any) {
+        // 如果已經有 payment collection，忽略錯誤繼續
+        console.warn('Payment init warning (may already exist):', paymentErr.message);
+      }
+
+      // 2. 組合商品名稱
       const itemName = cart.items
         .map((item) => `${item.title} x${item.quantity}`)
         .join(', ')
         .slice(0, 200); // ECPay 限制 200 字元
 
-      // 建立付款
+      // 3. 建立 ECPay 付款
       const res = await createCheckout({
         amount: total,
         item_name: itemName,

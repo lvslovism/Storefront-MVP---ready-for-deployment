@@ -262,6 +262,76 @@ export async function updateCart(
   });
 }
 
+// ============ Payment Collection API ============
+
+export interface PaymentCollection {
+  id: string;
+  currency_code: string;
+  amount: number;
+  status: string;
+  payment_sessions?: PaymentSession[];
+}
+
+export interface PaymentSession {
+  id: string;
+  provider_id: string;
+  status: string;
+  data: Record<string, unknown>;
+}
+
+/**
+ * 初始化 Cart 的 Payment Collection
+ * POST /store/carts/{id}/payment-collections
+ */
+export async function initPaymentCollection(
+  cartId: string
+): Promise<{ payment_collection: PaymentCollection }> {
+  return medusaFetch<{ payment_collection: PaymentCollection }>(
+    `/store/carts/${cartId}/payment-collections`,
+    { method: 'POST' }
+  );
+}
+
+/**
+ * 建立 Payment Session
+ * POST /store/payment-collections/{id}/payment-sessions
+ */
+export async function createPaymentSession(
+  paymentCollectionId: string,
+  providerId: string
+): Promise<{ payment_session: PaymentSession }> {
+  return medusaFetch<{ payment_session: PaymentSession }>(
+    `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ provider_id: providerId }),
+    }
+  );
+}
+
+/**
+ * 初始化 Payment（便利函數：初始化 collection + 建立 session）
+ * 使用 pp_system_default provider
+ */
+export async function initPaymentForCart(cartId: string): Promise<{
+  paymentCollection: PaymentCollection;
+  paymentSession: PaymentSession;
+}> {
+  // 1. 初始化 payment collection
+  const { payment_collection } = await initPaymentCollection(cartId);
+
+  // 2. 建立 payment session with system provider
+  const { payment_session } = await createPaymentSession(
+    payment_collection.id,
+    'pp_system_default'
+  );
+
+  return {
+    paymentCollection: payment_collection,
+    paymentSession: payment_session,
+  };
+}
+
 // ============ 工具函式 ============
 
 // 取得變體價格（TWD）
