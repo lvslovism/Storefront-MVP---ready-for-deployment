@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import ImageGallery from '@/components/website/ImageGallery';
 import VariantSelector from '@/components/website/VariantSelector';
 import QuantitySelector from '@/components/website/QuantitySelector';
@@ -12,12 +13,47 @@ interface ProductDetailClientProps {
   product: any;
 }
 
+// 處理描述文字：換行 + 關鍵字高亮
+function formatDescription(text: string): string {
+  if (!text) return '';
+
+  // 關鍵字列表（會加粗 + 金色）
+  const keywords = [
+    '主要成分', '成分', '沖泡方式', '使用方式', '食用方式',
+    '規格', '容量', '保存方式', '注意事項', '適用對象',
+    '產地', '有效期限', '建議', '特色', '功效'
+  ];
+
+  // 將 \n 轉換為 <br/>，並處理關鍵字
+  let formatted = text
+    .split('\n')
+    .map(line => {
+      // 檢查是否有關鍵字開頭
+      for (const keyword of keywords) {
+        if (line.includes(keyword + '：') || line.includes(keyword + ':')) {
+          // 將關鍵字包在 span 中
+          return line.replace(
+            new RegExp(`(${keyword}[：:])`, 'g'),
+            '<span class="keyword-highlight">$1</span>'
+          );
+        }
+      }
+      return line;
+    })
+    .join('<br/>');
+
+  return formatted;
+}
+
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+  const router = useRouter();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   // 整理圖片
   const images = useMemo(() => {
@@ -71,7 +107,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     setSelectedOptions(prev => ({ ...prev, [optionId]: value }));
   };
 
-  // 加入購物車 - 使用 CartProvider 的 addItem(variantId, quantity) 簽名
+  // 加入購物車
   const handleAddToCart = async () => {
     if (!canAdd || isAdding) return;
 
@@ -84,7 +120,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
       // 回饋動畫
       setAddedFeedback(true);
+      setShowToast(true);
+
       setTimeout(() => setAddedFeedback(false), 2000);
+      setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error('加入購物車失敗:', error);
     } finally {
@@ -92,8 +131,54 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
   };
 
+  // 立即購買
+  const handleBuyNow = async () => {
+    if (!canAdd || isAdding) return;
+
+    const variant = selectedVariant || product.variants?.[0];
+    if (!variant) return;
+
+    try {
+      setIsAdding(true);
+      await addItem(variant.id, quantity);
+      router.push('/checkout');
+    } catch (error) {
+      console.error('加入購物車失敗:', error);
+      setIsAdding(false);
+    }
+  };
+
+  // 處理描述
+  const formattedDescription = useMemo(() => {
+    return formatDescription(product.description || '');
+  }, [product.description]);
+
+  // 判斷描述是否過長（超過 150 字）
+  const descriptionIsLong = (product.description?.length || 0) > 150;
+
   return (
-    <div className="max-w-7xl mx-auto px-5 py-8">
+    <div className="max-w-7xl mx-auto px-5 py-8 pb-32 md:pb-8">
+      {/* Toast 提示 */}
+      {showToast && (
+        <div
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl flex items-center gap-4 animate-fade-in"
+          style={{
+            background: 'rgba(0,0,0,0.95)',
+            border: '1px solid rgba(212,175,55,0.3)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+          }}
+        >
+          <span style={{ color: '#06C755' }}>✓ 已加入購物車</span>
+          <Link
+            href="/checkout"
+            className="font-medium transition-colors"
+            style={{ color: '#D4AF37' }}
+          >
+            前往結帳 →
+          </Link>
+        </div>
+      )}
+
       {/* 麵包屑 */}
       <nav className="mb-8 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
         <Link href="/" className="hover:text-white transition-colors">首頁</Link>
@@ -162,49 +247,192 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <QuantitySelector quantity={quantity} onChange={setQuantity} />
           </div>
 
-          {/* 加入購物車 */}
-          <button
-            onClick={handleAddToCart}
-            disabled={!canAdd || isAdding}
-            className="w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300"
-            style={{
-              background: !canAdd
-                ? 'rgba(255,255,255,0.1)'
-                : addedFeedback
-                  ? '#06C755'
-                  : 'linear-gradient(135deg, #D4AF37, #B8962E)',
-              color: !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
-              cursor: canAdd && !isAdding ? 'pointer' : 'not-allowed',
-              boxShadow: canAdd && !addedFeedback ? '0 4px 20px rgba(212,175,55,0.3)' : 'none',
-            }}
-          >
-            {isAdding ? '加入中...' : addedFeedback ? '✓ 已加入購物車' : !canAdd ? '請選擇規格' : '加入購物車'}
-          </button>
+          {/* 桌面版按鈕區 - 手機版隱藏 */}
+          <div className="hidden md:block space-y-3">
+            {/* 加入購物車 */}
+            <button
+              onClick={handleAddToCart}
+              disabled={!canAdd || isAdding}
+              className="w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300"
+              style={{
+                background: !canAdd
+                  ? 'rgba(255,255,255,0.1)'
+                  : addedFeedback
+                    ? '#06C755'
+                    : 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                color: !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
+                cursor: canAdd && !isAdding ? 'pointer' : 'not-allowed',
+                boxShadow: canAdd && !addedFeedback ? '0 4px 20px rgba(212,175,55,0.3)' : 'none',
+              }}
+            >
+              {isAdding ? '加入中...' : addedFeedback ? '✓ 已加入購物車' : !canAdd ? '請選擇規格' : '加入購物車'}
+            </button>
+
+            {/* 立即購買 */}
+            <button
+              onClick={handleBuyNow}
+              disabled={!canAdd || isAdding}
+              className="w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300"
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(212,175,55,0.5)',
+                color: !canAdd ? 'rgba(255,255,255,0.3)' : '#D4AF37',
+                cursor: canAdd && !isAdding ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {isAdding ? '處理中...' : '立即購買'}
+            </button>
+          </div>
 
           {/* 免運提示 */}
-          <p className="text-center text-xs mt-4" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <p className="text-center text-xs mt-4 hidden md:block" style={{ color: 'rgba(255,255,255,0.4)' }}>
             🚛 滿 {formatPrice(config.shipping.freeShippingThreshold)} 免運費
           </p>
 
           {/* 分隔線 */}
           <div className="my-8" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }} />
 
-          {/* 商品說明 */}
+          {/* 商品說明 - 可折疊 */}
           {product.description && (
             <div>
               <h3 className="text-sm font-medium tracking-wider mb-4"
                 style={{ color: 'rgba(212,175,55,0.7)' }}>
                 商品說明
               </h3>
-              <div
-                className="text-sm leading-loose prose-invert"
-                style={{ color: 'rgba(255,255,255,0.55)' }}
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
+              <div className="relative">
+                <div
+                  className={`text-sm leading-loose overflow-hidden transition-all duration-300 ${
+                    !descriptionExpanded && descriptionIsLong ? 'max-h-36' : 'max-h-[2000px]'
+                  }`}
+                  style={{ color: 'rgba(255,255,255,0.55)' }}
+                >
+                  <div
+                    dangerouslySetInnerHTML={{ __html: formattedDescription }}
+                    className="description-content"
+                  />
+                </div>
+
+                {/* 漸層遮罩 + 查看更多按鈕 */}
+                {descriptionIsLong && !descriptionExpanded && (
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-20 flex items-end justify-center pb-2"
+                    style={{
+                      background: 'linear-gradient(to bottom, transparent, rgba(10,10,10,0.9) 50%, rgba(10,10,10,1))',
+                    }}
+                  >
+                    <button
+                      onClick={() => setDescriptionExpanded(true)}
+                      className="text-sm font-medium px-4 py-1.5 rounded-full transition-colors"
+                      style={{
+                        color: '#D4AF37',
+                        background: 'rgba(212,175,55,0.1)',
+                        border: '1px solid rgba(212,175,55,0.2)',
+                      }}
+                    >
+                      查看更多 ↓
+                    </button>
+                  </div>
+                )}
+
+                {/* 收起按鈕 */}
+                {descriptionIsLong && descriptionExpanded && (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={() => setDescriptionExpanded(false)}
+                      className="text-sm font-medium px-4 py-1.5 rounded-full transition-colors"
+                      style={{
+                        color: '#D4AF37',
+                        background: 'rgba(212,175,55,0.1)',
+                        border: '1px solid rgba(212,175,55,0.2)',
+                      }}
+                    >
+                      收起 ↑
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* 手機版底部 sticky 購物欄 */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+        style={{
+          background: 'rgba(0,0,0,0.95)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(212,175,55,0.2)',
+        }}
+      >
+        <div className="px-4 py-3">
+          {/* 價格 + 免運提示 */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold gold-text">
+                {price ? formatPrice(price) : '請選擇規格'}
+              </span>
+              {hasDiscount && (
+                <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {formatPrice(originalPrice)}
+                </span>
+              )}
+            </div>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              🚛 滿 {formatPrice(config.shipping.freeShippingThreshold)} 免運
+            </span>
+          </div>
+
+          {/* 按鈕組 */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleAddToCart}
+              disabled={!canAdd || isAdding}
+              className="flex-1 py-3 rounded-full text-sm font-semibold transition-all"
+              style={{
+                background: !canAdd
+                  ? 'rgba(255,255,255,0.1)'
+                  : addedFeedback
+                    ? '#06C755'
+                    : 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                color: !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
+              }}
+            >
+              {isAdding ? '...' : addedFeedback ? '✓ 已加入' : !canAdd ? '請選規格' : '加入購物車'}
+            </button>
+
+            <button
+              onClick={handleBuyNow}
+              disabled={!canAdd || isAdding}
+              className="flex-1 py-3 rounded-full text-sm font-semibold transition-all"
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(212,175,55,0.5)',
+                color: !canAdd ? 'rgba(255,255,255,0.3)' : '#D4AF37',
+              }}
+            >
+              立即購買
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 描述關鍵字高亮樣式 */}
+      <style jsx global>{`
+        .description-content .keyword-highlight {
+          color: #D4AF37;
+          font-weight: 500;
+        }
+
+        @keyframes fade-in {
+          from { opacity: 0; transform: translate(-50%, -10px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
