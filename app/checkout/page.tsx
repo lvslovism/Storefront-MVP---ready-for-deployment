@@ -319,7 +319,7 @@ export default function CheckoutPage() {
       console.log('[Checkout] Initializing payment for cart:', cart.id);
       const customerInfo = {
         firstName: formData.name,
-        lastName: '.',  // 台灣不分 first/last name
+        lastName: ' ',  // 台灣不分 first/last name，用空格避免顯示 "."
         email: formData.email || undefined,
         phone: formData.phone,
         address: shippingMethod === 'cvs'

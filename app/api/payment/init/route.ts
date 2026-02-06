@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
               email: customerInfo.email || undefined,
               shipping_address: {
                 first_name: customerInfo.firstName || 'Customer',
-                last_name: customerInfo.lastName || '.',
+                last_name: customerInfo.lastName || ' ',  // 空格，避免顯示 "."
                 phone: customerInfo.phone || '',
                 address_1: customerInfo.address || '超商取貨',
                 city: customerInfo.city || 'Taiwan',
