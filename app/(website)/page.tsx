@@ -4,7 +4,10 @@ import ProductCard from '@/components/ProductCard';
 import AnimatedSection from '@/components/website/AnimatedSection';
 import CountUp from '@/components/website/CountUp';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
+
+const HERO_BANNER_URL = 'https://ephdzjkgpkuydpbkxnfw.supabase.co/storage/v1/object/public/medusa-files/brand/hero-banner.jpg';
 
 export const metadata: Metadata = {
   title: 'MINJIE STUDIO | 嚴選健康食品',
@@ -77,58 +80,82 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       {/* ═══════════ Hero ═══════════ */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* 背景光暈 */}
-        <div className="absolute inset-0" style={{
-          background: `
-            radial-gradient(ellipse at 20% 50%, rgba(212,175,55,0.08) 0%, transparent 60%),
-            radial-gradient(ellipse at 80% 20%, rgba(212,175,55,0.05) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 40%)
-          `
-        }} />
+      <section className="relative h-[60vh] md:h-[80vh] min-h-[500px] w-full overflow-hidden">
+        {/* 背景圖 */}
+        <Image
+          src={HERO_BANNER_URL}
+          alt="MINJIE STUDIO"
+          fill
+          priority
+          className="object-cover"
+          style={{ objectPosition: '70% center' }}
+          sizes="100vw"
+        />
 
-        {/* 裝飾線條 */}
-        <div className="absolute top-1/4 left-10 w-px h-32 opacity-20"
-          style={{ background: 'linear-gradient(to bottom, transparent, rgba(212,175,55,0.5), transparent)' }} />
-        <div className="absolute bottom-1/4 right-10 w-px h-32 opacity-20"
-          style={{ background: 'linear-gradient(to bottom, transparent, rgba(212,175,55,0.5), transparent)' }} />
+        {/* 漸層遮罩 - 左暗右亮，讓左邊文字可讀，右邊人物突出 */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.1) 70%, transparent 100%)',
+          }}
+        />
 
-        <div className="relative text-center px-5 max-w-2xl">
-          {/* 品牌標語 */}
-          <div className="text-[11px] tracking-[6px] mb-8 animate-fade-in"
-            style={{ color: 'rgba(212,175,55,0.6)' }}>
-            ─── HEALTH & BEAUTY ───
-          </div>
-
-          <h1 className="text-4xl md:text-6xl font-light leading-tight mb-3 tracking-wider gold-text">
-            每一份細膩
-          </h1>
-          <h2 className="text-2xl md:text-3xl font-light leading-relaxed mb-6"
-            style={{ color: 'rgba(255,255,255,0.9)' }}>
-            都源自對家人健康的愛
-          </h2>
-
-          <p className="text-sm leading-loose mb-12 max-w-md mx-auto"
-            style={{ color: 'rgba(255,255,255,0.45)' }}>
-            日復一日的用心，只為讓家人的健康更安心<br />
-            嚴選全球頂級原料，打造專屬於你的健康方案
-          </p>
-
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/products" className="btn-gold">
-              探索商品
-            </Link>
-            <a href="#membership" className="btn-gold-outline">
-              加入 LINE
-            </a>
-          </div>
-
-          {/* 向下箭頭 */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="rgba(212,175,55,0.4)" strokeWidth="1.5">
-              <path d="M12 5v14M5 12l7 7 7-7" />
-            </svg>
+        {/* 文字內容 - 靠左 */}
+        <div className="absolute inset-0 flex items-center">
+          <div className="max-w-7xl mx-auto px-6 md:px-10 w-full">
+            <div className="max-w-lg">
+              <p
+                className="text-xs md:text-sm tracking-[4px] mb-4"
+                style={{ color: '#D4AF37' }}
+              >
+                ✦ HEALTH & BEAUTY ✦
+              </p>
+              <h1
+                className="text-3xl md:text-5xl font-light mb-3"
+                style={{ color: '#D4AF37', letterSpacing: '3px' }}
+              >
+                每一份細膩
+              </h1>
+              <p
+                className="text-xl md:text-2xl font-light mb-6"
+                style={{ color: 'rgba(255,255,255,0.9)', letterSpacing: '2px' }}
+              >
+                都源自對家人健康的愛
+              </p>
+              <p
+                className="text-sm md:text-base mb-8 leading-relaxed"
+                style={{ color: 'rgba(255,255,255,0.55)' }}
+              >
+                日復一日的用心，只為讓家人的健康更安心。
+                <br />
+                嚴選全球頂級原料，打造專屬你的健康方案。
+              </p>
+              <div className="flex gap-4">
+                {/* 查看商品 - 金色填充 */}
+                <Link
+                  href="/products"
+                  className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                    color: '#000',
+                    boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
+                  }}
+                >
+                  查看商品
+                </Link>
+                {/* 加入 LINE - 透明邊框 */}
+                <a
+                  href="#membership"
+                  className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
+                  style={{
+                    border: '1px solid rgba(212,175,55,0.5)',
+                    color: '#D4AF37',
+                  }}
+                >
+                  加入 LINE
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -263,26 +290,35 @@ export default async function HomePage() {
           </AnimatedSection>
 
           <AnimatedSection delay={200}>
-            {/* 照片佔位 — 之後替換成翠翠形象照 */}
-            <div className="h-80 md:h-[450px] rounded-2xl flex items-center justify-center overflow-hidden relative"
+            {/* 翠翠形象照 */}
+            <div
+              className="h-80 md:h-[450px] rounded-2xl overflow-hidden relative"
               style={{
-                background: 'linear-gradient(135deg, #1a1a1a, #111)',
                 border: '1px solid rgba(212,175,55,0.15)',
-              }}>
+              }}
+            >
+              <Image
+                src={HERO_BANNER_URL}
+                alt="翠翠 - MINJIE STUDIO 創辦人"
+                fill
+                className="object-cover"
+                style={{ objectPosition: 'right center' }}
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
               {/* 裝飾元素 */}
-              <div className="absolute top-4 right-4 text-[10px] tracking-widest"
-                style={{ color: 'rgba(212,175,55,0.3)' }}>
+              <div
+                className="absolute top-4 right-4 text-[10px] tracking-widest z-10"
+                style={{ color: 'rgba(212,175,55,0.6)' }}
+              >
                 MINJIE STUDIO
               </div>
-              <div className="text-center">
-                <div className="text-5xl mb-4 opacity-30">📸</div>
-                <div className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                  翠翠形象照片
-                </div>
-                <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.15)' }}>
-                  提供後替換
-                </div>
-              </div>
+              {/* 底部漸層 */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-20"
+                style={{
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)',
+                }}
+              />
             </div>
           </AnimatedSection>
         </div>
