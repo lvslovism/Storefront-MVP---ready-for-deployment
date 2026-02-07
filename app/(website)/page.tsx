@@ -92,69 +92,41 @@ export default async function HomePage() {
           sizes="100vw"
         />
 
-        {/* 漸層遮罩 - 左暗右亮，讓左邊文字可讀，右邊人物突出 */}
+        {/* 漸層遮罩 - 底部稍暗讓按鈕可讀，上方透明讓原圖完整顯示 */}
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.1) 70%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 30%, transparent 60%)',
           }}
         />
 
-        {/* 文字內容 - 靠左 */}
-        <div className="absolute inset-0 flex items-center">
-          <div className="max-w-7xl mx-auto px-6 md:px-10 w-full">
-            <div className="max-w-lg">
-              <p
-                className="text-xs md:text-sm tracking-[4px] mb-4"
-                style={{ color: '#D4AF37' }}
+        {/* CTA 按鈕 - 左下角 */}
+        <div className="absolute inset-0 z-10 flex items-end">
+          <div className="max-w-7xl mx-auto px-6 md:px-10 w-full pb-16 md:pb-20">
+            <div className="flex gap-4">
+              {/* 查看商品 - 金色填充 */}
+              <Link
+                href="/products"
+                className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                  color: '#000',
+                  boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
+                }}
               >
-                ✦ HEALTH & BEAUTY ✦
-              </p>
-              <h1
-                className="text-3xl md:text-5xl font-light mb-3"
-                style={{ color: '#D4AF37', letterSpacing: '3px' }}
+                查看商品
+              </Link>
+              {/* 加入 LINE - 透明邊框 */}
+              <a
+                href="#membership"
+                className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
+                style={{
+                  border: '1px solid rgba(212,175,55,0.5)',
+                  color: '#D4AF37',
+                }}
               >
-                每一份細膩
-              </h1>
-              <p
-                className="text-xl md:text-2xl font-light mb-6"
-                style={{ color: 'rgba(255,255,255,0.9)', letterSpacing: '2px' }}
-              >
-                都源自對家人健康的愛
-              </p>
-              <p
-                className="text-sm md:text-base mb-8 leading-relaxed"
-                style={{ color: 'rgba(255,255,255,0.55)' }}
-              >
-                日復一日的用心，只為讓家人的健康更安心。
-                <br />
-                嚴選全球頂級原料，打造專屬你的健康方案。
-              </p>
-              <div className="flex gap-4">
-                {/* 查看商品 - 金色填充 */}
-                <Link
-                  href="/products"
-                  className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
-                  style={{
-                    background: 'linear-gradient(135deg, #D4AF37, #B8962E)',
-                    color: '#000',
-                    boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
-                  }}
-                >
-                  查看商品
-                </Link>
-                {/* 加入 LINE - 透明邊框 */}
-                <a
-                  href="#membership"
-                  className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
-                  style={{
-                    border: '1px solid rgba(212,175,55,0.5)',
-                    color: '#D4AF37',
-                  }}
-                >
-                  加入 LINE
-                </a>
-              </div>
+                加入 LINE
+              </a>
             </div>
           </div>
         </div>
