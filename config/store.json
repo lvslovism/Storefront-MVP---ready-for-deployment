@@ -1,10 +1,10 @@
 {
   "store": {
-    "name": "敏捷商店",
-    "shortName": "敏捷",
-    "description": "AI 驅動的電商解決方案",
+    "name": "MINJIE STUDIO",
+    "shortName": "MINJIE",
+    "description": "嚴選全球頂級原料，打造專屬你的健康方案",
     "domain": "shop.minjie0326.com",
-    "logo": "/tenant/logo.png",
+    "logo": "",
     "favicon": "/tenant/favicon.ico"
   },
   "theme": {
@@ -42,13 +42,13 @@
   "contact": {
     "email": "support@minjie0326.com",
     "phone": "",
-    "lineOA": "",
+    "lineOA": "https://lin.ee/Ro3Fd4p",
     "instagram": "",
     "facebook": ""
   },
   "seo": {
-    "title": "敏捷商店 | AI 電商解決方案",
-    "description": "專業的電商建站服務，快速上線您的網路商店",
+    "title": "MINJIE STUDIO | 嚴選健康食品",
+    "description": "嚴選全球頂級原料，打造專屬你的健康方案",
     "ogImage": "/tenant/og-image.png"
   }
 }
