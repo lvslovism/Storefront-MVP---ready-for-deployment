@@ -68,13 +68,20 @@ export default function CheckoutPage() {
   const [lineCustomerId, setLineCustomerId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'cod'>('credit_card');
 
+  // 折扣碼
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null);
+
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // 計算金額
   const subtotal = cart?.subtotal || 0;
   const shippingFee = getShippingFee(shippingMethod, subtotal);
-  const total = subtotal - creditsToUse + shippingFee;
+  const discount = promoApplied?.discount || 0;
+  const total = subtotal - discount - creditsToUse + shippingFee;
 
   // Polling 取得門市選擇結果
   const pollCvsSelection = useCallback(async (tempTradeNo: string, maxAttempts = 30) => {
@@ -175,6 +182,71 @@ export default function CheckoutPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // 套用折扣碼
+  const applyPromoCode = async () => {
+    if (!promoCode.trim() || !cart?.id) return;
+    setPromoLoading(true);
+    setPromoError('');
+
+    try {
+      const res = await fetch(
+        `${config.medusa.backendUrl}/store/carts/${cart.id}/promotions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-publishable-api-key': config.medusa.publishableKey,
+          },
+          body: JSON.stringify({ promo_codes: [promoCode.trim().toUpperCase()] }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || data.type === 'not_found' || data.type === 'invalid_data') {
+        setPromoError('折扣碼無效或已過期');
+        return;
+      }
+
+      // 從回傳的 cart 取折扣金額（Medusa v2 是元，不是分）
+      const discountTotal = data.cart?.discount_total || 0;
+
+      setPromoApplied({
+        code: promoCode.trim().toUpperCase(),
+        discount: discountTotal,
+      });
+      setPromoCode('');
+    } catch (err) {
+      setPromoError('套用失敗，請稍後再試');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  // 移除折扣碼
+  const removePromoCode = async () => {
+    if (!promoApplied || !cart?.id) return;
+
+    try {
+      await fetch(
+        `${config.medusa.backendUrl}/store/carts/${cart.id}/promotions`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-publishable-api-key': config.medusa.publishableKey,
+          },
+          body: JSON.stringify({ promo_codes: [promoApplied.code] }),
+        }
+      );
+
+      setPromoApplied(null);
+      setPromoCode('');
+    } catch (err) {
+      console.error('移除折扣碼失敗', err);
+    }
   };
 
   // 開啟超商地圖（根據裝置類型選擇方式）
@@ -406,6 +478,11 @@ export default function CheckoutPage() {
           shipping_method: shippingMethod,
           shipping_fee: shippingFee,
           credits_used: creditsToUse,
+          // 折扣碼
+          ...(promoApplied && {
+            promo_code: promoApplied.code,
+            promo_discount: promoApplied.discount,
+          }),
           // 超取資訊
           ...(shippingMethod === 'cvs' && cvsSelection && {
             cvs_type: formData.cvsType,
@@ -749,6 +826,72 @@ export default function CheckoutPage() {
                   )}
                 </span>
               </div>
+
+              {/* 折扣碼輸入 */}
+              <div className="my-4 pt-2 border-t border-gray-700">
+                <label className="block text-sm text-gray-400 mb-2">折扣碼</label>
+                {promoApplied ? (
+                  <div
+                    className="flex items-center justify-between p-3 rounded-lg"
+                    style={{
+                      background: 'rgba(212, 175, 55, 0.1)',
+                      border: '1px solid rgba(212, 175, 55, 0.3)',
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: '#D4AF37', fontWeight: 600 }}>✓ {promoApplied.code}</span>
+                      <span className="text-gray-400 text-sm ml-2">
+                        已折抵 {formatPrice(promoApplied.discount)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removePromoCode}
+                      className="text-red-400 text-sm hover:text-red-300"
+                    >
+                      移除
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      placeholder="輸入折扣碼"
+                      className="flex-1 px-3 py-2 rounded-lg text-sm"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#fff',
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPromoCode())}
+                    />
+                    <button
+                      type="button"
+                      onClick={applyPromoCode}
+                      disabled={promoLoading || !promoCode.trim()}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        background: promoCode.trim() ? '#D4AF37' : '#333',
+                        color: promoCode.trim() ? '#000' : '#666',
+                      }}
+                    >
+                      {promoLoading ? '...' : '套用'}
+                    </button>
+                  </div>
+                )}
+                {promoError && <p className="text-red-400 text-xs mt-2">{promoError}</p>}
+              </div>
+
+              {/* 折扣金額顯示 */}
+              {promoApplied && promoApplied.discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '#D4AF37' }}>🏷️ 折扣碼 {promoApplied.code}</span>
+                  <span style={{ color: '#D4AF37' }}>-{formatPrice(promoApplied.discount)}</span>
+                </div>
+              )}
+
               {/* 登入提醒 */}
               {!isLineLoggedIn && (
                 <div className="my-3 p-3 rounded-lg" style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
