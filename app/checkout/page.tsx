@@ -55,6 +55,25 @@ const AUTO_DISCOUNT_CONFIG = {
   amount: 200,
 };
 
+// 從 cart.items 的 adjustments 計算每個 promotion 的實際折扣金額
+function calculateDiscountsByCode(cart: any): Record<string, number> {
+  const discounts: Record<string, number> = {};
+
+  if (!cart?.items) return discounts;
+
+  cart.items.forEach((item: any) => {
+    if (!item.adjustments) return;
+
+    item.adjustments.forEach((adj: any) => {
+      if (adj.code) {
+        discounts[adj.code] = (discounts[adj.code] || 0) + (adj.amount || 0);
+      }
+    });
+  });
+
+  return discounts;
+}
+
 // 根據配送方式和商品小計，取得運費和 shipping option ID
 function getShippingInfo(method: ShippingMethod, subtotal: number) {
   const config = SHIPPING_CONFIG[method];
@@ -120,9 +139,12 @@ export default function CheckoutPage() {
   const subtotal = cart?.subtotal || 0;
   const shippingInfo = getShippingInfo(shippingMethod, subtotal);
   const shippingFee = shippingInfo.fee;
-  const promoDiscount = promoApplied?.discount || 0;
-  const autoDiscountAmount = autoDiscount?.discount || 0;
-  const totalDiscount = promoDiscount + autoDiscountAmount;
+
+  // 從 cart.items adjustments 計算各 promotion 的實際折扣
+  const discountsByCode = calculateDiscountsByCode(cart);
+  const autoDiscountAmount = discountsByCode[AUTO_DISCOUNT_CONFIG.code] || 0;
+  const promoDiscountAmount = promoApplied ? (discountsByCode[promoApplied.code] || 0) : 0;
+  const totalDiscount = autoDiscountAmount + promoDiscountAmount;
   const total = subtotal - totalDiscount - creditsToUse + shippingFee;
 
   // Polling 取得門市選擇結果
@@ -229,13 +251,17 @@ export default function CheckoutPage() {
     const subtotal = cart.subtotal || 0;
     const hasFull2000 = cart.promotions?.some(p => p.code === AUTO_DISCOUNT_CONFIG.code);
 
+    // 從 adjustments 計算 FULL2000 的實際折扣金額
+    const currentDiscounts = calculateDiscountsByCode(cart);
+    const full2000Discount = currentDiscounts[AUTO_DISCOUNT_CONFIG.code] || 0;
+
     // 避免重複處理相同的 subtotal
     if (lastSubtotalRef.current === subtotal) {
       // subtotal 沒變，只更新 UI 狀態
-      if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold && hasFull2000) {
+      if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold && hasFull2000 && full2000Discount > 0) {
         setAutoDiscount({
           code: AUTO_DISCOUNT_CONFIG.code,
-          discount: AUTO_DISCOUNT_CONFIG.amount,
+          discount: full2000Discount,
         });
       } else {
         setAutoDiscount(null);
@@ -248,10 +274,10 @@ export default function CheckoutPage() {
     const manageFull2000 = async () => {
       if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold) {
         // 達門檻：保留折扣並更新 UI
-        if (hasFull2000) {
+        if (hasFull2000 && full2000Discount > 0) {
           setAutoDiscount({
             code: AUTO_DISCOUNT_CONFIG.code,
-            discount: AUTO_DISCOUNT_CONFIG.amount,
+            discount: full2000Discount,
           });
         } else {
           // Medusa 自動折扣應該會自動套用，只需刷新 cart
@@ -283,7 +309,7 @@ export default function CheckoutPage() {
     };
 
     manageFull2000();
-  }, [cart?.id, cart?.subtotal, cart?.promotions, cartLoading, refreshCart]);
+  }, [cart?.id, cart?.subtotal, cart?.items, cart?.promotions, cartLoading, refreshCart]);
 
   // 更新表單
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -297,6 +323,9 @@ export default function CheckoutPage() {
     setPromoLoading(true);
     setPromoError('');
 
+    const codeToApply = promoCode.trim().toUpperCase();
+    console.log('[Checkout] Applying promo code:', codeToApply);
+
     try {
       const res = await fetch(
         `${config.medusa.backendUrl}/store/carts/${cart.id}/promotions`,
@@ -306,25 +335,43 @@ export default function CheckoutPage() {
             'Content-Type': 'application/json',
             'x-publishable-api-key': config.medusa.publishableKey,
           },
-          body: JSON.stringify({ promo_codes: [promoCode.trim().toUpperCase()] }),
+          body: JSON.stringify({ promo_codes: [codeToApply] }),
         }
       );
 
       const data = await res.json();
+      console.log('[Checkout] Promo API response:', { status: res.status, data });
 
-      if (!res.ok || data.type === 'not_found' || data.type === 'invalid_data') {
+      if (!res.ok) {
+        const errorMsg = data.message || data.error || '折扣碼無效或已過期';
+        console.error('[Checkout] Promo code error:', errorMsg);
+        setPromoError(errorMsg);
+        return;
+      }
+
+      if (data.type === 'not_found' || data.type === 'invalid_data') {
         setPromoError('折扣碼無效或已過期');
         return;
       }
 
-      // 從回傳的 cart 取折扣金額（Medusa v2 是元，不是分）
-      const discountTotal = data.cart?.discount_total || 0;
+      // 從回傳的 cart.items.adjustments 計算這個 promo code 的實際折扣
+      const returnedDiscounts = calculateDiscountsByCode(data.cart);
+      const promoCodeDiscount = returnedDiscounts[codeToApply] || 0;
+      console.log('[Checkout] Promo applied, code discount:', codeToApply, promoCodeDiscount);
+
+      if (promoCodeDiscount === 0) {
+        setPromoError('折扣碼不適用於目前的購物車');
+        return;
+      }
 
       setPromoApplied({
-        code: promoCode.trim().toUpperCase(),
-        discount: discountTotal,
+        code: codeToApply,
+        discount: promoCodeDiscount,
       });
       setPromoCode('');
+
+      // 刷新 cart 以確保 UI 同步
+      await refreshCart();
     } catch (err) {
       setPromoError('套用失敗，請稍後再試');
     } finally {
@@ -949,7 +996,7 @@ export default function CheckoutPage() {
                     <div>
                       <span style={{ color: '#D4AF37', fontWeight: 600 }}>✓ {promoApplied.code}</span>
                       <span className="text-gray-400 text-sm ml-2">
-                        已折抵 {formatPrice(promoApplied.discount)}
+                        已折抵 {formatPrice(promoDiscountAmount)}
                       </span>
                     </div>
                     <button
@@ -993,18 +1040,18 @@ export default function CheckoutPage() {
               </div>
 
               {/* 滿額自動折扣顯示 */}
-              {autoDiscount && autoDiscount.discount > 0 && (
+              {autoDiscountAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: '#D4AF37' }}>🎉 滿額折扣</span>
-                  <span style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscount.discount)}</span>
+                  <span style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscountAmount)}</span>
                 </div>
               )}
 
               {/* 折扣碼金額顯示 */}
-              {promoApplied && promoApplied.discount > 0 && (
+              {promoApplied && promoDiscountAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: '#D4AF37' }}>🏷️ 折扣碼 {promoApplied.code}</span>
-                  <span style={{ color: '#D4AF37' }}>-{formatPrice(promoApplied.discount)}</span>
+                  <span style={{ color: '#D4AF37' }}>-{formatPrice(promoDiscountAmount)}</span>
                 </div>
               )}
 

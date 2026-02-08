@@ -142,6 +142,13 @@ export async function getCollections(): Promise<CollectionsResponse> {
 
 // ============ 購物車 API ============
 
+export interface CartItemAdjustment {
+  id: string;
+  code: string;
+  amount: number;
+  promotion_id?: string;
+}
+
 export interface CartItem {
   id: string;
   title: string;
@@ -162,6 +169,7 @@ export interface CartItem {
       thumbnail: string | null;
     };
   };
+  adjustments?: CartItemAdjustment[];
 }
 
 export interface CartPromotion {

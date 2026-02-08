@@ -10,6 +10,10 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
+// 滿額折扣設定
+const AUTO_DISCOUNT_THRESHOLD = 2000;
+const AUTO_DISCOUNT_AMOUNT = 200;
+
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { cart, isLoading, updateItem, removeItem } = useCart();
 
@@ -19,18 +23,22 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const isFreeShipping = subtotal >= config.shipping.freeShippingThreshold;
   const amountToFreeShipping = config.shipping.freeShippingThreshold - subtotal;
 
+  // 滿額折扣
+  const hasAutoDiscount = subtotal >= AUTO_DISCOUNT_THRESHOLD;
+  const amountToAutoDiscount = AUTO_DISCOUNT_THRESHOLD - subtotal;
+
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 animate-fade-in"
+        className="fixed inset-0 z-[60] animate-fade-in"
         style={{ background: 'rgba(0,0,0,0.7)' }}
         onClick={onClose}
       />
 
       {/* Drawer */}
       <div
-        className="fixed right-0 top-0 h-full w-full max-w-md z-50 shadow-xl animate-slide-in-right flex flex-col"
+        className="fixed right-0 top-0 h-full w-full max-w-md z-[60] shadow-xl animate-slide-in-right flex flex-col"
         style={{ background: '#0a0a0a' }}
       >
         {/* Header */}
@@ -254,6 +262,23 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <span style={{ color: 'rgba(255,255,255,0.7)' }}>小計</span>
               <span className="gold-text">{formatPrice(subtotal)}</span>
             </div>
+
+            {/* 滿額折扣提示 */}
+            {hasAutoDiscount ? (
+              <div
+                className="text-sm py-2 px-3 rounded-lg"
+                style={{ background: 'rgba(212,175,55,0.12)', color: '#D4AF37' }}
+              >
+                🎉 滿額折 -{formatPrice(AUTO_DISCOUNT_AMOUNT)}
+              </div>
+            ) : amountToAutoDiscount > 0 && (
+              <div
+                className="text-sm py-2 px-3 rounded-lg"
+                style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)' }}
+              >
+                再買 <span className="font-bold" style={{ color: '#D4AF37' }}>{formatPrice(amountToAutoDiscount)}</span> 享滿額折 {formatPrice(AUTO_DISCOUNT_AMOUNT)}
+              </div>
+            )}
 
             {/* 結帳按鈕 */}
             {config.features.checkout ? (
