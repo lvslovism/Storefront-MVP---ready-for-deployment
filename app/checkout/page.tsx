@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/components/CartProvider';
-import { formatPrice, config } from '@/lib/config';
+import { formatPrice, config, shipping } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
 import { initPaymentForCart } from '@/lib/medusa';
 import CreditsSelector from '@/components/checkout/CreditsSelector';
