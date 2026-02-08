@@ -1,0 +1,224 @@
+/* styles/checkout.css */
+/* MINJIE STUDIO 結帳頁黑金風格覆蓋 */
+
+/* ===== 頁面背景 ===== */
+.checkout-page {
+  background: linear-gradient(180deg, #0a0a0a 0%, #111 100%);
+  min-height: 100vh;
+  color: #e8e8e8;
+}
+
+/* ===== 標題 ===== */
+.checkout-page h1 {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.checkout-page h2 {
+  color: #f0f0f0;
+  font-weight: 600;
+}
+
+/* ===== 卡片區塊 ===== */
+.checkout-page .card {
+  background: #1a1a1a;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 12px;
+}
+
+/* ===== 表單輸入框 ===== */
+.checkout-page .input {
+  background: #222;
+  border: 1px solid #333;
+  color: #e8e8e8;
+  transition: border-color 0.2s;
+}
+
+.checkout-page .input::placeholder {
+  color: #666;
+}
+
+.checkout-page .input:focus {
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+}
+
+/* ===== 標籤文字 ===== */
+.checkout-page label {
+  color: #ccc;
+}
+
+/* ===== 物流方式按鈕 ===== */
+.checkout-page .shipping-option {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #ccc;
+  transition: all 0.2s;
+}
+
+.checkout-page .shipping-option:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.checkout-page .shipping-option.active {
+  border-color: #D4AF37;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+/* ===== 超商按鈕 ===== */
+.checkout-page .cvs-btn {
+  background: #222;
+  border: 1px solid #333;
+  color: #ccc;
+}
+
+.checkout-page .cvs-btn.active {
+  background: #D4AF37;
+  border-color: #D4AF37;
+  color: #000;
+  font-weight: 600;
+}
+
+/* ===== 訂單摘要 ===== */
+.checkout-page .order-summary {
+  background: #1a1a1a;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+}
+
+.checkout-page .order-summary .item-title {
+  color: #e8e8e8;
+}
+
+.checkout-page .order-summary .item-qty {
+  color: #888;
+}
+
+.checkout-page .order-summary .item-price {
+  color: #D4AF37;
+}
+
+.checkout-page .order-summary .summary-label {
+  color: #999;
+}
+
+.checkout-page .order-summary .summary-value {
+  color: #e8e8e8;
+}
+
+.checkout-page .order-summary .total-label {
+  color: #fff;
+  font-size: 1.125rem;
+}
+
+.checkout-page .order-summary .total-value {
+  color: #D4AF37;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.checkout-page .order-summary .free-shipping {
+  color: #4ade80;
+}
+
+/* ===== 分隔線 ===== */
+.checkout-page .divide-y > * + * {
+  border-color: #2a2a2a;
+}
+
+.checkout-page .border-t {
+  border-color: #2a2a2a;
+}
+
+/* ===== 主按鈕（前往付款） ===== */
+.checkout-page .btn-primary {
+  background: linear-gradient(135deg, #D4AF37, #B8941A);
+  color: #000;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: none;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+}
+
+.checkout-page .btn-primary:hover {
+  background: linear-gradient(135deg, #e0c04a, #D4AF37);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+  transform: translateY(-1px);
+}
+
+.checkout-page .btn-primary:disabled {
+  background: #333;
+  color: #666;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ===== 外框按鈕 ===== */
+.checkout-page .btn-outline {
+  background: transparent;
+  border: 1px solid #D4AF37;
+  color: #D4AF37;
+}
+
+.checkout-page .btn-outline:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* ===== 錯誤訊息 ===== */
+.checkout-page .error-box {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #f87171;
+  border-radius: 8px;
+}
+
+/* ===== 購物金折抵行 ===== */
+.checkout-page .credits-line {
+  color: #D4AF37;
+}
+
+/* ===== 門市選擇成功 ===== */
+.checkout-page .store-selected {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.checkout-page .store-selected .store-name {
+  color: #4ade80;
+}
+
+.checkout-page .store-selected .store-address {
+  color: rgba(74, 222, 128, 0.7);
+}
+
+/* ===== 繼續購物連結 ===== */
+.checkout-page .continue-shopping {
+  color: #888;
+  transition: color 0.2s;
+}
+
+.checkout-page .continue-shopping:hover {
+  color: #D4AF37;
+}
+
+/* ===== 免運提示 ===== */
+.checkout-page .shipping-hint {
+  color: #888;
+}
+
+/* ===== 商品圖片 ===== */
+.checkout-page .product-thumb {
+  background: #222;
+  border-radius: 8px;
+}
+
+/* ===== 空購物車 ===== */
+.checkout-page .empty-cart {
+  color: #888;
+}
+
+.checkout-page .empty-cart h1 {
+  color: #ccc;
+}

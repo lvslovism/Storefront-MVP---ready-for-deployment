@@ -1,3 +1,5 @@
+import '@/styles/checkout.css'
+
 export default function CheckoutLayout({
   children,
 }: {

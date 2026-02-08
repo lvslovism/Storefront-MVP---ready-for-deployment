@@ -401,7 +401,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="checkout-page container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-8">結帳</h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -614,7 +614,7 @@ export default function CheckoutPage() {
 
             {/* 錯誤訊息 */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+              <div className="error-box p-4">
                 {error}
               </div>
             )}
@@ -634,14 +634,14 @@ export default function CheckoutPage() {
 
         {/* 右側：訂單摘要 */}
         <div className="lg:col-span-1">
-          <div className="card p-6 sticky top-24">
+          <div className="card order-summary p-6 sticky top-24">
             <h2 className="text-lg font-bold mb-4">訂單摘要</h2>
 
             {/* 商品列表 */}
             <ul className="divide-y mb-4">
               {cart?.items?.map((item) => (
                 <li key={item.id} className="py-3 flex gap-3">
-                  <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                  <div className="product-thumb w-16 h-16 rounded overflow-hidden flex-shrink-0">
                     {item.thumbnail && (
                       <Image
                         src={item.thumbnail}
@@ -715,7 +715,7 @@ export default function CheckoutPage() {
             {/* 返回購物 */}
             <Link
               href="/"
-              className="block text-center text-sm text-gray-500 mt-4 hover:text-primary"
+              className="continue-shopping block text-center text-sm text-gray-500 mt-4 hover:text-primary"
             >
               ← 繼續購物
             </Link>
