@@ -85,10 +85,29 @@ export async function GET(
       // This is a fallback for when cart_id matching fails
       console.log('Order not found by cart_id, returning most recent order');
       if (orders.length > 0) {
+        // Debug: log order structure
+        console.log('Order structure:', JSON.stringify({
+          id: orders[0].id,
+          display_id: orders[0].display_id,
+          item_sample: orders[0].items?.[0],
+          summary: orders[0].summary,
+          subtotal: orders[0].subtotal,
+          item_subtotal: orders[0].item_subtotal,
+        }, null, 2));
         return NextResponse.json({ order: orders[0], matched_by: 'recent' });
       }
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
+
+    // Debug: log order structure
+    console.log('Order structure:', JSON.stringify({
+      id: order.id,
+      display_id: order.display_id,
+      item_sample: order.items?.[0],
+      summary: order.summary,
+      subtotal: order.subtotal,
+      item_subtotal: order.item_subtotal,
+    }, null, 2));
 
     return NextResponse.json({ order, matched_by: 'cart_id' });
   } catch (error) {
