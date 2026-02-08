@@ -80,25 +80,36 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       {/* ═══════════ Hero ═══════════ */}
-      <section className="relative h-[50vh] md:h-[80vh] md:min-h-[500px] w-full overflow-hidden">
-        {/* 背景圖 - 手機: cover 貼頂 / 桌面: cover 偏右 */}
+      {/* 手機版 - contain 自然高度 */}
+      <section className="relative w-full bg-[#0a0a0a] md:hidden">
+        <Image
+          src={HERO_BANNER_URL}
+          alt="MINJIE STUDIO"
+          width={1200}
+          height={800}
+          priority
+          className="w-full h-auto"
+          sizes="100vw"
+        />
+      </section>
+
+      {/* 桌面版 - cover 固定高度 */}
+      <section className="relative hidden md:block md:h-[80vh] md:min-h-[500px] w-full overflow-hidden">
         <Image
           src={HERO_BANNER_URL}
           alt="MINJIE STUDIO"
           fill
           priority
-          className="object-cover object-top md:object-[70%_center]"
+          className="object-cover object-[70%_center]"
           sizes="100vw"
         />
-
-        {/* 漸層遮罩 - 底部稍暗讓按鈕可讀，上方透明讓原圖完整顯示 */}
+        {/* 漸層遮罩 */}
         <div
           className="absolute inset-0"
           style={{
             background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 30%, transparent 60%)',
           }}
         />
-
       </section>
 
       {/* ═══════════ 信任數字條 ═══════════ */}
