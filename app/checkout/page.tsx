@@ -8,6 +8,7 @@ import { useCart } from '@/components/CartProvider';
 import { formatPrice, config, shipping, isFreeShipping, getShippingFee } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
 import { initPaymentForCart } from '@/lib/medusa';
+import CreditsSelector from '@/components/checkout/CreditsSelector';
 
 type ShippingMethod = 'cvs' | 'home';
 type CvsType = 'UNIMARTC2C' | 'FAMIC2C' | 'HILIFEC2C';
@@ -62,6 +63,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSelectingStore, setIsSelectingStore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creditsToUse, setCreditsToUse] = useState(0);
 
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,7 +71,7 @@ export default function CheckoutPage() {
   // 計算金額
   const subtotal = cart?.subtotal || 0;
   const shippingFee = getShippingFee(shippingMethod, subtotal);
-  const total = subtotal + shippingFee;
+  const total = subtotal - creditsToUse + shippingFee;
 
   // Polling 取得門市選擇結果
   const pollCvsSelection = useCallback(async (tempTradeNo: string, maxAttempts = 30) => {
@@ -354,6 +356,7 @@ export default function CheckoutPage() {
           cart_id: cart.id,
           shipping_method: shippingMethod,
           shipping_fee: shippingFee,
+          credits_used: creditsToUse,
           // 超取資訊
           ...(shippingMethod === 'cvs' && cvsSelection && {
             cvs_type: formData.cvsType,
@@ -674,6 +677,17 @@ export default function CheckoutPage() {
                   )}
                 </span>
               </div>
+              <CreditsSelector
+                customerId={cart?.customer_id || null}
+                subtotal={subtotal}
+                onCreditsChange={setCreditsToUse}
+              />
+              {creditsToUse > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '#D4AF37' }}>💰 購物金折抵</span>
+                  <span style={{ color: '#D4AF37' }}>-{formatPrice(creditsToUse)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold border-t pt-2">
                 <span>總計</span>
                 <span className="text-accent">{formatPrice(total)}</span>
