@@ -23,9 +23,27 @@ function getItemUnitPrice(item: any): number {
   return price;
 }
 
-// 從 item 取得數量（Medusa v2 可能沒有 quantity，預設 1）
-function getItemQuantity(item: any): number {
-  return item.quantity ?? item.detail?.quantity ?? 1;
+// 從 item 取得數量（Medusa v2 可能沒有 quantity，需計算）
+function getItemQuantity(item: any, order?: Order | null): number {
+  // 直接從 item 取得
+  if (item.quantity && item.quantity > 0) return item.quantity;
+  if (item.detail?.quantity && item.detail.quantity > 0) return item.detail.quantity;
+
+  // 如果只有一個品項，從訂單總計反推數量
+  if (order && order.items?.length === 1) {
+    const orderTotal = order.summary?.current_order_total ?? 0;
+    const shippingFee = order.shipping_methods?.[0]?.amount ?? 0;
+    const unitPrice = getItemUnitPrice(item);
+
+    if (unitPrice > 0) {
+      // 商品總計 = 訂單總計 - 運費
+      const itemsTotal = orderTotal - shippingFee;
+      const calculatedQty = Math.round(itemsTotal / unitPrice);
+      if (calculatedQty > 0) return calculatedQty;
+    }
+  }
+
+  return 1; // 預設
 }
 
 interface Order {
@@ -82,7 +100,7 @@ function getSubtotal(order: Order): number {
   // 從 items 計算
   return order.items.reduce((sum, item) => {
     const price = getItemUnitPrice(item);
-    const qty = getItemQuantity(item);
+    const qty = getItemQuantity(item, order);
     return sum + (price * qty);
   }, 0);
 }
@@ -239,7 +257,7 @@ function CheckoutCompleteContent() {
               <h2 className="font-bold text-gray-900 mb-4">商品明細</h2>
               <ul className="divide-y divide-gray-200">
                 {order.items?.map((item, idx) => {
-                  const qty = getItemQuantity(item);
+                  const qty = getItemQuantity(item, order);
                   const unitPrice = getItemUnitPrice(item);
                   const itemTotal = unitPrice * qty;
 
