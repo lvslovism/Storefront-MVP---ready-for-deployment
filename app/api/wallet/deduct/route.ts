@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // 放到 app/api/wallet/deduct/route.ts
 // 付款成功後扣除購物金
 // POST /api/wallet/deduct

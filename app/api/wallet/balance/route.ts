@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // 放到 app/api/wallet/balance/route.ts
 // 查詢用戶購物金餘額 + 可折抵上限
 // GET /api/wallet/balance?customer_id=xxx
