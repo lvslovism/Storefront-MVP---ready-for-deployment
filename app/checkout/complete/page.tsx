@@ -6,42 +6,26 @@ import { useSearchParams } from 'next/navigation';
 
 // 格式化價格
 function formatPrice(amount: number): string {
+  if (!amount || isNaN(amount)) return 'NT$ 0';
   return `NT$ ${Math.round(amount).toLocaleString()}`;
 }
 
-// 從 item 取得單價（處理 Medusa v2 各種格式）
+// 從 item 取得單價（Medusa v2: unit_price 已是正確金額，不需除 100）
 function getItemUnitPrice(item: any): number {
-  // 嘗試多種可能的價格欄位
-  let price = item.unit_price
-    ?? item.raw_unit_price?.value
-    ?? item.total / item.quantity
-    ?? item.raw_total?.value / item.quantity
-    ?? 0;
+  let price = item.unit_price ?? 0;
 
-  // 轉成數字
+  // 如果是字串，轉成數字
   if (typeof price === 'string') {
     price = parseFloat(price) || 0;
   }
 
-  // Medusa v2 金額可能是「分」，超過 10000 就除以 100
-  if (price > 10000) {
-    price = price / 100;
-  }
-
+  // Medusa v2 金額已經是 TWD，不需除 100
   return price;
 }
 
-// 從 item 取得數量
+// 從 item 取得數量（Medusa v2 可能沒有 quantity，預設 1）
 function getItemQuantity(item: any): number {
   return item.quantity ?? item.detail?.quantity ?? 1;
-}
-
-// 從 item 取得小計
-function getItemTotal(item: any): number {
-  let total = item.total ?? item.raw_total?.value ?? 0;
-  if (typeof total === 'string') total = parseFloat(total) || 0;
-  if (total > 10000) total = total / 100;
-  return total;
 }
 
 interface Order {
@@ -64,15 +48,8 @@ interface Order {
   }>;
   summary?: {
     current_order_total?: number;
-    raw_current_order_total?: { value: number | string };
-    subtotal?: number;
-    item_subtotal?: number;
-    raw_item_subtotal?: { value: number | string };
-    shipping_total?: number;
+    paid_total?: number;
   };
-  subtotal?: number;
-  item_subtotal?: number;
-  total?: number;
   metadata?: {
     cvs_store_name?: string;
     cvs_address?: string;
@@ -81,57 +58,33 @@ interface Order {
   };
 }
 
+// 取得訂單總計
 function getOrderTotal(order: Order): number {
-  const o = order as any;
-  let rawTotal: number | string = o.summary?.current_order_total
-    ?? o.summary?.raw_current_order_total?.value
-    ?? o.total
-    ?? o.raw_total?.value
+  const total = order.summary?.current_order_total
+    ?? order.summary?.paid_total
     ?? 0;
-
-  if (typeof rawTotal === 'string') {
-    rawTotal = parseFloat(rawTotal) || 0;
-  }
-
-  if (typeof rawTotal === 'number' && rawTotal > 100000) {
-    return rawTotal / 100;
-  }
-  return rawTotal;
+  return typeof total === 'number' ? total : parseFloat(total) || 0;
 }
 
+// 取得運費
 function getShippingFee(order: Order): number {
-  const o = order as any;
-  let shipping = o.summary?.shipping_total
-    ?? o.shipping_total
-    ?? o.shipping_methods?.[0]?.amount
-    ?? 0;
-  if (typeof shipping === 'string') shipping = parseFloat(shipping) || 0;
-  if (shipping > 10000) shipping = shipping / 100;
-  return shipping;
+  const shipping = order.shipping_methods?.[0]?.amount ?? 0;
+  return typeof shipping === 'number' ? shipping : parseFloat(shipping) || 0;
 }
 
+// 計算小計（從 items 加總）
 function getSubtotal(order: Order): number {
-  const o = order as any;
-
-  // 嘗試多種可能的 subtotal 欄位
-  let subtotal = o.summary?.subtotal
-    ?? o.summary?.item_subtotal
-    ?? o.summary?.raw_item_subtotal?.value
-    ?? o.subtotal
-    ?? o.item_subtotal
-    ?? 0;
-
-  if (typeof subtotal === 'string') {
-    subtotal = parseFloat(subtotal) || 0;
+  if (!order.items?.length) {
+    // 沒有 items，用總計減運費
+    return getOrderTotal(order) - getShippingFee(order);
   }
 
-  // 如果還是 0，從 items 計算
-  if (subtotal === 0 && order.items?.length > 0) {
-    subtotal = order.items.reduce((sum, item) => sum + getItemTotal(item), 0);
-  }
-
-  if (subtotal > 100000) subtotal = subtotal / 100;
-  return subtotal;
+  // 從 items 計算
+  return order.items.reduce((sum, item) => {
+    const price = getItemUnitPrice(item);
+    const qty = getItemQuantity(item);
+    return sum + (price * qty);
+  }, 0);
 }
 
 function CheckoutCompleteContent() {
@@ -166,9 +119,7 @@ function CheckoutCompleteContent() {
       if (res.ok) {
         const data = await res.json();
         if (data.order) {
-          // Debug log
-          console.log('Order data:', data.order);
-          console.log('First item:', data.order.items?.[0]);
+          console.log('Order loaded:', data.order);
           setOrder(data.order);
         }
       } else {
@@ -197,7 +148,13 @@ function CheckoutCompleteContent() {
     const method = order.metadata?.shipping_method;
     if (method === 'cvs') return '超商取貨';
     if (method === 'home') return '宅配到府';
-    if (order.shipping_methods?.[0]?.name) return order.shipping_methods[0].name;
+    // 從 shipping_methods 取名稱
+    const shippingName = order.shipping_methods?.[0]?.name;
+    if (shippingName) {
+      if (shippingName.includes('超商')) return '超商取貨';
+      if (shippingName.includes('宅配')) return '宅配到府';
+      return shippingName;
+    }
     return '標準配送';
   }
 
@@ -244,6 +201,10 @@ function CheckoutCompleteContent() {
   }
 
   // Success
+  const subtotal = order ? getSubtotal(order) : 0;
+  const shippingFee = order ? getShippingFee(order) : 0;
+  const total = order ? getOrderTotal(order) : (tradeAmt ? parseInt(tradeAmt) : 0);
+
   return (
     <div className="min-h-screen bg-white py-8">
       <div className="container mx-auto px-4 max-w-2xl">
@@ -280,15 +241,15 @@ function CheckoutCompleteContent() {
                 {order.items?.map((item, idx) => {
                   const qty = getItemQuantity(item);
                   const unitPrice = getItemUnitPrice(item);
-                  const itemTotal = getItemTotal(item) || (unitPrice * qty);
+                  const itemTotal = unitPrice * qty;
 
                   return (
                     <li key={item.id || idx} className="py-3 flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <span className="text-gray-700">{item.title || item.product_title || '商品'}</span>
-                        <span className="text-sm text-gray-500">x{qty}</span>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-gray-700 truncate">{item.title || item.product_title || '商品'}</span>
+                        <span className="text-sm text-gray-500 flex-shrink-0">x{qty}</span>
                       </div>
-                      <span className="font-medium text-gray-900">{formatPrice(itemTotal)}</span>
+                      <span className="font-medium text-gray-900 flex-shrink-0 ml-4">{formatPrice(itemTotal)}</span>
                     </li>
                   );
                 })}
@@ -298,11 +259,11 @@ function CheckoutCompleteContent() {
               <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">小計</span>
-                  <span className="text-gray-900">{formatPrice(getSubtotal(order))}</span>
+                  <span className="text-gray-900">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">運費</span>
-                  <span className="text-gray-900">{getShippingFee(order) === 0 ? '免運' : formatPrice(getShippingFee(order))}</span>
+                  <span className="text-gray-900">{shippingFee === 0 ? '免運' : formatPrice(shippingFee)}</span>
                 </div>
                 {order.metadata?.credits_used && order.metadata.credits_used > 0 && (
                   <div className="flex justify-between text-sm">
@@ -312,7 +273,7 @@ function CheckoutCompleteContent() {
                 )}
                 <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
                   <span className="text-gray-900">總計</span>
-                  <span style={{ color: '#D4AF37' }}>{formatPrice(getOrderTotal(order))}</span>
+                  <span style={{ color: '#D4AF37' }}>{formatPrice(total)}</span>
                 </div>
               </div>
             </div>
@@ -350,7 +311,7 @@ function CheckoutCompleteContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">收件人</span>
                   <span className="text-gray-900">
-                    {order.shipping_address?.last_name}{order.shipping_address?.first_name}
+                    {order.shipping_address?.last_name?.trim()}{order.shipping_address?.first_name}
                   </span>
                 </div>
                 {order.shipping_address?.phone && (
@@ -373,7 +334,7 @@ function CheckoutCompleteContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">付款金額</span>
                   <span className="font-bold" style={{ color: '#DC2626' }}>
-                    {tradeAmt ? formatPrice(parseInt(tradeAmt)) : formatPrice(getOrderTotal(order))}
+                    {formatPrice(total)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -389,7 +350,7 @@ function CheckoutCompleteContent() {
               <ul className="text-sm text-amber-700 space-y-1">
                 <li>1. 我們會在 1-2 個工作天內處理您的訂單</li>
                 <li>2. 出貨後會透過 LINE 或簡訊通知您</li>
-                <li>3. {order.metadata?.shipping_method === 'cvs' ? '超商取貨預計 2-3 天到貨' : '宅配預計 1-2 天送達'}</li>
+                <li>3. {formatShippingMethod(order).includes('超商') ? '超商取貨預計 2-3 天到貨' : '宅配預計 1-2 天送達'}</li>
               </ul>
             </div>
           </>
