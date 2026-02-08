@@ -93,14 +93,15 @@ export default async function HomePage() {
         />
       </section>
 
-      {/* 桌面版 - cover 固定高度 */}
-      <section className="relative hidden md:block md:h-[80vh] md:min-h-[500px] w-full overflow-hidden">
+      {/* 桌面版 - 自然高度不裁切 */}
+      <section className="relative hidden md:block w-full overflow-hidden">
         <Image
           src={HERO_BANNER_URL}
           alt="MINJIE STUDIO"
-          fill
+          width={1920}
+          height={800}
           priority
-          className="object-cover object-[70%_center]"
+          className="w-full h-auto"
           sizes="100vw"
         />
         {/* 漸層遮罩 */}
