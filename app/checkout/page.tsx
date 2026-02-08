@@ -479,10 +479,10 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setShippingMethod('cvs')}
-                    className={`flex-1 p-4 border rounded-lg text-center transition-colors ${
+                    className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
                       shippingMethod === 'cvs'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-white bg-white/10'
+                        : 'border-gray-600 hover:border-gray-500'
                     }`}
                   >
                     <span className="block text-2xl mb-1">🏪</span>
@@ -496,10 +496,10 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setShippingMethod('home')}
-                    className={`flex-1 p-4 border rounded-lg text-center transition-colors ${
+                    className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
                       shippingMethod === 'home'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-white bg-white/10'
+                        : 'border-gray-600 hover:border-gray-500'
                     }`}
                   >
                     <span className="block text-2xl mb-1">🚚</span>
