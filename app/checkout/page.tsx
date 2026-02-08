@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/components/CartProvider';
-import { formatPrice, config, shipping, isFreeShipping, getShippingFee } from '@/lib/config';
+import { formatPrice, config } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
 import { initPaymentForCart } from '@/lib/medusa';
 import CreditsSelector from '@/components/checkout/CreditsSelector';
@@ -31,6 +31,35 @@ const STORAGE_KEYS = {
   FORM_DATA: 'checkout_form_data',
   SHIPPING_METHOD: 'checkout_shipping_method',
 };
+
+// Shipping options 和免運門檻設定
+const SHIPPING_CONFIG = {
+  home: {
+    paid: 'so_01KGYTF42QQBBP9PNBPBZAZF73',     // 宅配 $100
+    free: 'so_01KGZ4K103XXQC45EX2HTHXKHW',     // 宅配免運 $0
+    fee: 100,
+    freeThreshold: 3000,
+  },
+  cvs: {
+    paid: 'so_01KGT10N7MH9ACTVKJE5G223G8',     // 超商 $60
+    free: 'so_01KGZ4K364F7BAYAR7Q53XAB10',     // 超商免運 $0
+    fee: 60,
+    freeThreshold: 1000,
+  },
+};
+
+// 根據配送方式和商品小計，取得運費和 shipping option ID
+function getShippingInfo(method: ShippingMethod, subtotal: number) {
+  const config = SHIPPING_CONFIG[method];
+  const isFree = subtotal >= config.freeThreshold;
+  return {
+    fee: isFree ? 0 : config.fee,
+    optionId: isFree ? config.free : config.paid,
+    isFree,
+    threshold: config.freeThreshold,
+    remaining: Math.max(0, config.freeThreshold - subtotal),
+  };
+}
 
 // 偵測是否為手機裝置
 const isMobileDevice = (): boolean => {
@@ -79,7 +108,8 @@ export default function CheckoutPage() {
 
   // 計算金額
   const subtotal = cart?.subtotal || 0;
-  const shippingFee = getShippingFee(shippingMethod, subtotal);
+  const shippingInfo = getShippingInfo(shippingMethod, subtotal);
+  const shippingFee = shippingInfo.fee;
   const discount = promoApplied?.discount || 0;
   const total = subtotal - discount - creditsToUse + shippingFee;
 
@@ -422,7 +452,8 @@ export default function CheckoutPage() {
         cart.id,
         customerInfo,
         { ...(creditsToUse > 0 && { credits_used: creditsToUse }), payment_method: paymentMethod },
-        shippingMethod
+        shippingMethod,
+        shippingInfo.optionId
       );
       console.log('[Checkout] Payment initialized:', paymentResult);
 
@@ -600,7 +631,7 @@ export default function CheckoutPage() {
                     <span className="block text-2xl mb-1">🏪</span>
                     <span className="font-medium">超商取貨</span>
                     <span className="block text-sm text-gray-500 mt-1">
-                      {isFreeShipping(subtotal) ? '免運' : `${formatPrice(shipping.cvsFee)}`}
+                      {subtotal >= SHIPPING_CONFIG.cvs.freeThreshold ? '免運' : formatPrice(SHIPPING_CONFIG.cvs.fee)}
                     </span>
                   </button>
                 )}
@@ -617,7 +648,7 @@ export default function CheckoutPage() {
                     <span className="block text-2xl mb-1">🚚</span>
                     <span className="font-medium">宅配到府</span>
                     <span className="block text-sm text-gray-500 mt-1">
-                      {isFreeShipping(subtotal) ? '免運' : `${formatPrice(shipping.homeDeliveryFee)}`}
+                      {subtotal >= SHIPPING_CONFIG.home.freeThreshold ? '免運' : formatPrice(SHIPPING_CONFIG.home.fee)}
                     </span>
                   </button>
                 )}
@@ -918,9 +949,9 @@ export default function CheckoutPage() {
             </div>
 
             {/* 免運提示 */}
-            {!isFreeShipping(subtotal) && (
+            {shippingInfo.remaining > 0 && (
               <p className="text-xs text-gray-500 mt-4">
-                再買 {formatPrice(shipping.freeShippingThreshold - subtotal)} 即可免運
+                再買 {formatPrice(shippingInfo.remaining)} 即可{shippingMethod === 'cvs' ? '超商' : '宅配'}免運
               </p>
             )}
 

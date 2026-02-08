@@ -4,12 +4,6 @@ import { medusa } from '@/lib/config';
 const BACKEND_URL = medusa.backendUrl;
 const PUBLISHABLE_KEY = medusa.publishableKey;
 
-// Shipping option IDs（Medusa）
-const SHIPPING_OPTIONS = {
-  cvs: 'so_01KGT10N7MH9ACTVKJE5G223G8',   // 超商取貨（ECPay處理）
-  home: 'so_01KGYTF42QQBBP9PNBPBZAZF73',  // 宅配到府
-};
-
 interface CustomerInfo {
   firstName?: string;
   lastName?: string;
@@ -30,15 +24,21 @@ interface CustomerInfo {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { cartId, customerInfo, metadata, shippingMethod } = await request.json() as {
+    const { cartId, customerInfo, metadata, shippingMethod, shippingOptionId } = await request.json() as {
       cartId: string;
       customerInfo?: CustomerInfo;
       metadata?: Record<string, any>;
       shippingMethod?: 'cvs' | 'home';
+      shippingOptionId?: string;
     };
 
-    // 根據配送方式選擇 shipping option
-    const shippingOptionId = SHIPPING_OPTIONS[shippingMethod || 'cvs'];
+    // 使用傳入的 shippingOptionId（由結帳頁根據免運門檻計算）
+    if (!shippingOptionId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing shippingOptionId' },
+        { status: 400 }
+      );
+    }
 
     if (!cartId) {
       return NextResponse.json(

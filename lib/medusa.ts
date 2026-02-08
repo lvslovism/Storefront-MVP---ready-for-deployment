@@ -294,12 +294,13 @@ export async function initPaymentForCart(
   cartId: string,
   customerInfo?: CustomerInfo,
   metadata?: Record<string, any>,
-  shippingMethod?: 'cvs' | 'home'
+  shippingMethod?: 'cvs' | 'home',
+  shippingOptionId?: string
 ): Promise<PaymentInitResult> {
   const res = await fetch('/api/payment/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cartId, customerInfo, metadata, shippingMethod }),
+    body: JSON.stringify({ cartId, customerInfo, metadata, shippingMethod, shippingOptionId }),
   });
 
   const data = await res.json();
