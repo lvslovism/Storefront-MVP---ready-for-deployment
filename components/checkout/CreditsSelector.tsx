@@ -38,11 +38,23 @@ export default function CreditsSelector({
 
   // 查詢餘額
   const fetchBalance = useCallback(async () => {
-    if (!customerId) return
-    
+    let cid = customerId
+
+    if (!cid) {
+      try {
+        const sessionRes = await fetch('/api/auth/line/session')
+        const sessionData = await sessionRes.json()
+        if (sessionData.logged_in && sessionData.customer_id) {
+          cid = sessionData.customer_id
+        }
+      } catch (e) {}
+    }
+
+    if (!cid) return
+
     setLoading(true)
     try {
-      const res = await fetch(`/api/wallet/balance?customer_id=${customerId}`)
+      const res = await fetch(`/api/wallet/balance?customer_id=${cid}`)
       if (res.ok) {
         const data = await res.json()
         setWalletInfo(data)
