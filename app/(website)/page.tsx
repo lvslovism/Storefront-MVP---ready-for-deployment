@@ -80,15 +80,14 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       {/* ═══════════ Hero ═══════════ */}
-      <section className="relative h-[60vh] md:h-[80vh] min-h-[500px] w-full overflow-hidden">
-        {/* 背景圖 */}
+      <section className="relative h-[40vh] md:h-[80vh] md:min-h-[500px] w-full overflow-hidden bg-[#0a0a0a]">
+        {/* 背景圖 - 手機: contain 置中 / 桌面: cover 偏右 */}
         <Image
           src={HERO_BANNER_URL}
           alt="MINJIE STUDIO"
           fill
           priority
-          className="object-cover"
-          style={{ objectPosition: '70% center' }}
+          className="object-contain md:object-cover object-center md:object-[70%_center]"
           sizes="100vw"
         />
 
