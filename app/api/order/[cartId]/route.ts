@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const MEDUSA_BACKEND_URL = process.env.MEDUSA_BACKEND_URL || 'https://medusa-store-minjie-production.up.railway.app';
 const MEDUSA_ADMIN_EMAIL = process.env.MEDUSA_ADMIN_EMAIL || '';
 const MEDUSA_ADMIN_PASSWORD = process.env.MEDUSA_ADMIN_PASSWORD || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Admin token cache
 let adminToken: string | null = null;
@@ -26,13 +28,73 @@ async function getMedusaAdminToken(): Promise<string | null> {
     if (response.ok) {
       const data = await response.json();
       adminToken = data.token;
-      tokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
+      tokenExpiry = Date.now() + 60 * 60 * 1000;
       return adminToken;
     }
-    console.error('Medusa auth failed:', await response.text());
+    console.error('[OrderAPI] Medusa auth failed:', await response.text());
     return null;
   } catch (error) {
-    console.error('Medusa auth error:', error);
+    console.error('[OrderAPI] Medusa auth error:', error);
+    return null;
+  }
+}
+
+/**
+ * 透過 Supabase gateway_transactions 查 cart_id 對應的 medusa_order_id
+ */
+async function findOrderIdByCartId(cartId: string): Promise<string | null> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('[OrderAPI] Supabase not configured, skipping gateway lookup');
+    return null;
+  }
+
+  try {
+    // gateway_transactions.order_id 存的是 cart_id
+    const url = `${SUPABASE_URL}/rest/v1/gateway_transactions?order_id=eq.${encodeURIComponent(cartId)}&select=medusa_order_id,status&order=created_at.desc&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('[OrderAPI] Supabase query failed:', response.status);
+      return null;
+    }
+
+    const rows = await response.json();
+    if (rows.length > 0 && rows[0].medusa_order_id) {
+      console.log('[OrderAPI] Found medusa_order_id via gateway:', rows[0].medusa_order_id);
+      return rows[0].medusa_order_id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[OrderAPI] Supabase lookup error:', error);
+    return null;
+  }
+}
+
+/**
+ * 用單筆 endpoint 取完整 order（含 quantity, total 等計算欄位）
+ */
+async function fetchOrderById(orderId: string, token: string): Promise<any | null> {
+  try {
+    const response = await fetch(
+      `${MEDUSA_BACKEND_URL}/admin/orders/${orderId}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+
+    if (!response.ok) {
+      console.error('[OrderAPI] Fetch order failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.order || null;
+  } catch (error) {
+    console.error('[OrderAPI] Fetch order error:', error);
     return null;
   }
 }
@@ -53,70 +115,49 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to authenticate with Medusa' }, { status: 500 });
     }
 
-    // Query orders and find by cart_id
-    // Medusa v2 doesn't support direct cart_id filter, so we fetch recent orders and filter
-    // Request *items.detail to get quantity from detail relation
-    const response = await fetch(
-      `${MEDUSA_BACKEND_URL}/admin/orders?fields=id,display_id,status,created_at,total,subtotal,*items,*items.detail,*shipping_address,*summary,*shipping_methods,metadata&limit=20&order=-created_at`,
-      {
-        headers: { 'Authorization': `Bearer ${token}` },
+    // === 策略 1：透過 Supabase gateway_transactions 精確匹配 ===
+    const medusaOrderId = await findOrderIdByCartId(cartId);
+    if (medusaOrderId) {
+      const order = await fetchOrderById(medusaOrderId, token);
+      if (order) {
+        return NextResponse.json({ order, matched_by: 'gateway_transaction' });
       }
+    }
+
+    // === 策略 2：用 Medusa list API 嘗試 metadata 匹配（備用）===
+    try {
+      const listResponse = await fetch(
+        `${MEDUSA_BACKEND_URL}/admin/orders?limit=10&order=-created_at`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (listResponse.ok) {
+        const listData = await listResponse.json();
+        const orders = listData.orders || [];
+
+        const matched = orders.find((o: any) =>
+          o.metadata?.cart_id === cartId
+        );
+
+        if (matched) {
+          // 找到後用單筆 endpoint 取完整資料
+          const fullOrder = await fetchOrderById(matched.id, token);
+          if (fullOrder) {
+            return NextResponse.json({ order: fullOrder, matched_by: 'metadata' });
+          }
+        }
+      }
+    } catch (listError) {
+      console.error('[OrderAPI] List fallback error:', listError);
+    }
+
+    // === 找不到就 404，絕不 fallback 回傳最新 order ===
+    return NextResponse.json(
+      { error: 'Order not found for this cart' },
+      { status: 404 }
     );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Medusa orders fetch error:', errorText);
-      return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
-    }
-
-    const data = await response.json();
-    const orders = data.orders || [];
-
-    // Find order by cart_id (stored in order.cart_id or order metadata)
-    // deno-lint-ignore no-explicit-any
-    const order = orders.find((o: any) => {
-      // Medusa v2: cart_id might be in different places
-      return o.cart_id === cartId ||
-             o.id === cartId.replace('cart_', 'order_') ||
-             o.metadata?.cart_id === cartId;
-    });
-
-    if (!order) {
-      // If not found by cart_id, try to return the most recent order
-      // This is a fallback for when cart_id matching fails
-      console.log('Order not found by cart_id, returning most recent order');
-      if (orders.length > 0) {
-        const o = orders[0];
-        console.log('ORDER ITEMS:', JSON.stringify(o.items?.[0], null, 2));
-        console.log('ORDER TOTALS:', {
-          subtotal: o.subtotal,
-          total: o.total,
-          item_subtotal: o.item_subtotal,
-          shipping_total: o.shipping_total,
-          summary: o.summary
-        });
-        console.log('ORDER SHIPPING:', JSON.stringify(o.shipping_methods?.[0], null, 2));
-        console.log('ORDER SHIPPING_ADDRESS:', JSON.stringify(o.shipping_address, null, 2));
-        return NextResponse.json({ order: o, matched_by: 'recent' });
-      }
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    // Debug: log order structure
-    console.log('ORDER ITEMS:', JSON.stringify(order.items?.[0], null, 2));
-    console.log('ORDER TOTALS:', {
-      subtotal: order.subtotal,
-      total: order.total,
-      item_subtotal: order.item_subtotal,
-      shipping_total: order.shipping_total,
-      summary: order.summary
-    });
-    console.log('ORDER SHIPPING:', JSON.stringify(order.shipping_methods?.[0], null, 2));
-    console.log('ORDER SHIPPING_ADDRESS:', JSON.stringify(order.shipping_address, null, 2));
-
-    return NextResponse.json({ order, matched_by: 'cart_id' });
   } catch (error) {
-    console.error('Order API error:', error);
+    console.error('[OrderAPI] Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
