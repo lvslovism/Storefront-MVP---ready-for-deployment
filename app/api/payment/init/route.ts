@@ -72,7 +72,10 @@ export async function POST(request: NextRequest) {
                 country_code: 'tw',
                 postal_code: customerInfo.postalCode || '000',
               },
-              ...(metadata && { metadata }),
+              metadata: {
+                ...metadata,
+                shipping_method: shippingMethod || 'cvs',
+              },
             }),
           }
         );

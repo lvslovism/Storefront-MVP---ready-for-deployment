@@ -162,16 +162,21 @@ function CheckoutCompleteContent() {
   }
 
   function formatShippingMethod(order: Order): string {
+    // 1. 從 shipping_methods name 判斷（最可靠）
+    const name = order.shipping_methods?.[0]?.name || '';
+    if (name.includes('宅配') || name.includes('home') || name.includes('Home')) return '宅配到府';
+    if (name.includes('超商') || name.includes('CVS') || name.includes('cvs')) return '超商取貨';
+
+    // 2. 從 shipping_option_id 判斷
+    const optionId = (order.shipping_methods?.[0] as any)?.shipping_option_id;
+    if (optionId === 'so_01KGYTF42QQBBP9PNBPBZAZF73') return '宅配到府';
+    if (optionId === 'so_01KGT10N7MH9ACTVKJE5G223G8') return '超商取貨';
+
+    // 3. 從 metadata fallback
     const method = order.metadata?.shipping_method;
-    if (method === 'cvs') return '超商取貨';
     if (method === 'home') return '宅配到府';
-    // 從 shipping_methods 取名稱
-    const shippingName = order.shipping_methods?.[0]?.name;
-    if (shippingName) {
-      if (shippingName.includes('超商')) return '超商取貨';
-      if (shippingName.includes('宅配')) return '宅配到府';
-      return shippingName;
-    }
+    if (method === 'cvs') return '超商取貨';
+
     return '標準配送';
   }
 
