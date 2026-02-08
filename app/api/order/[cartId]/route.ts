@@ -85,29 +85,33 @@ export async function GET(
       // This is a fallback for when cart_id matching fails
       console.log('Order not found by cart_id, returning most recent order');
       if (orders.length > 0) {
-        // Debug: log order structure
-        console.log('Order structure:', JSON.stringify({
-          id: orders[0].id,
-          display_id: orders[0].display_id,
-          item_sample: orders[0].items?.[0],
-          summary: orders[0].summary,
-          subtotal: orders[0].subtotal,
-          item_subtotal: orders[0].item_subtotal,
-        }, null, 2));
-        return NextResponse.json({ order: orders[0], matched_by: 'recent' });
+        const o = orders[0];
+        console.log('ORDER ITEMS:', JSON.stringify(o.items?.[0], null, 2));
+        console.log('ORDER TOTALS:', {
+          subtotal: o.subtotal,
+          total: o.total,
+          item_subtotal: o.item_subtotal,
+          shipping_total: o.shipping_total,
+          summary: o.summary
+        });
+        console.log('ORDER SHIPPING:', JSON.stringify(o.shipping_methods?.[0], null, 2));
+        console.log('ORDER SHIPPING_ADDRESS:', JSON.stringify(o.shipping_address, null, 2));
+        return NextResponse.json({ order: o, matched_by: 'recent' });
       }
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     // Debug: log order structure
-    console.log('Order structure:', JSON.stringify({
-      id: order.id,
-      display_id: order.display_id,
-      item_sample: order.items?.[0],
-      summary: order.summary,
+    console.log('ORDER ITEMS:', JSON.stringify(order.items?.[0], null, 2));
+    console.log('ORDER TOTALS:', {
       subtotal: order.subtotal,
+      total: order.total,
       item_subtotal: order.item_subtotal,
-    }, null, 2));
+      shipping_total: order.shipping_total,
+      summary: order.summary
+    });
+    console.log('ORDER SHIPPING:', JSON.stringify(order.shipping_methods?.[0], null, 2));
+    console.log('ORDER SHIPPING_ADDRESS:', JSON.stringify(order.shipping_address, null, 2));
 
     return NextResponse.json({ order, matched_by: 'cart_id' });
   } catch (error) {
