@@ -230,6 +230,7 @@ function CheckoutCompleteContent() {
   const shippingFee = order?.shipping_total ?? 0;
   const creditsUsed = order?.metadata?.credits_used ?? 0;
   const total = order?.total ?? (tradeAmt ? parseInt(tradeAmt) : 0);
+  const paidAmount = total - creditsUsed;
 
   return (
     <div className="min-h-screen bg-white py-8">
@@ -362,7 +363,7 @@ function CheckoutCompleteContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">付款金額</span>
                   <span className="font-bold" style={{ color: '#DC2626' }}>
-                    {formatPrice(total)}
+                    {formatPrice(paidAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between">
