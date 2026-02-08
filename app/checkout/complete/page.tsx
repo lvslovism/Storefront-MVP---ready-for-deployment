@@ -10,17 +10,18 @@ function formatPrice(amount: number): string {
   return `NT$ ${Math.round(amount).toLocaleString()}`;
 }
 
-// 從 item 取得單價（Medusa v2: unit_price 已是正確金額，不需除 100）
+// 從 item 取得單價
 function getItemUnitPrice(item: any): number {
-  let price = item.unit_price ?? 0;
-
-  // 如果是字串，轉成數字
-  if (typeof price === 'string') {
-    price = parseFloat(price) || 0;
-  }
-
-  // Medusa v2 金額已經是 TWD，不需除 100
+  let price = item.unit_price ?? item.raw_unit_price?.value ?? 0;
+  if (typeof price === 'string') price = parseFloat(price) || 0;
   return price;
+}
+
+// 從 item 取得總價
+function getItemTotal(item: any): number {
+  let total = item.total ?? item.raw_total?.value ?? 0;
+  if (typeof total === 'string') total = parseFloat(total) || 0;
+  return total;
 }
 
 // 從 item 取得數量（Medusa v2 可能沒有 quantity，需計算）
@@ -78,31 +79,29 @@ interface Order {
 
 // 取得訂單總計
 function getOrderTotal(order: Order): number {
-  const total = order.summary?.current_order_total
-    ?? order.summary?.paid_total
-    ?? 0;
-  return typeof total === 'number' ? total : parseFloat(total) || 0;
+  const o = order as any;
+  let rawTotal = o.summary?.current_order_total ?? o.total ?? o.raw_total?.value ?? 0;
+  if (typeof rawTotal === 'string') rawTotal = parseFloat(rawTotal) || 0;
+  return rawTotal;
 }
 
 // 取得運費
 function getShippingFee(order: Order): number {
-  const shipping = order.shipping_methods?.[0]?.amount ?? 0;
-  return typeof shipping === 'number' ? shipping : parseFloat(shipping) || 0;
+  const o = order as any;
+  let shipping = o.summary?.shipping_total ?? o.shipping_total ?? o.shipping_methods?.[0]?.amount ?? 0;
+  if (typeof shipping === 'string') shipping = parseFloat(shipping) || 0;
+  return shipping;
 }
 
-// 計算小計（從 items 加總）
+// 計算小計
 function getSubtotal(order: Order): number {
-  if (!order.items?.length) {
-    // 沒有 items，用總計減運費
-    return getOrderTotal(order) - getShippingFee(order);
+  const o = order as any;
+  let subtotal = o.summary?.subtotal ?? o.summary?.item_subtotal ?? o.subtotal ?? o.item_subtotal ?? 0;
+  if (typeof subtotal === 'string') subtotal = parseFloat(subtotal) || 0;
+  if (subtotal === 0 && order.items?.length > 0) {
+    subtotal = order.items.reduce((sum: number, item: any) => sum + getItemTotal(item), 0);
   }
-
-  // 從 items 計算
-  return order.items.reduce((sum, item) => {
-    const price = getItemUnitPrice(item);
-    const qty = getItemQuantity(item, order);
-    return sum + (price * qty);
-  }, 0);
+  return subtotal;
 }
 
 function CheckoutCompleteContent() {
