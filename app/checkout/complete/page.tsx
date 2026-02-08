@@ -116,6 +116,7 @@ function CheckoutCompleteContent() {
   const rtnMsg = searchParams.get('RtnMsg');
   const tradeAmt = searchParams.get('TradeAmt');
   const paymentType = searchParams.get('PaymentType');
+  const paymentMethodParam = searchParams.get('payment_method'); // COD support
 
   useEffect(() => {
     if (rtnCode === '1') {
@@ -150,6 +151,8 @@ function CheckoutCompleteContent() {
   }
 
   function formatPaymentType(type: string | null): string {
+    // COD 取貨付款
+    if (paymentMethodParam === 'cod') return '取貨付款';
     if (!type) return '線上付款';
     const types: Record<string, string> = {
       'Credit_CreditCard': '信用卡',
@@ -361,7 +364,11 @@ function CheckoutCompleteContent() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">付款狀態</span>
-                  <span className="font-medium" style={{ color: '#059669' }}>已付款</span>
+                  {paymentMethodParam === 'cod' ? (
+                    <span className="font-medium" style={{ color: '#D97706' }}>待付款 - 取貨時付款</span>
+                  ) : (
+                    <span className="font-medium" style={{ color: '#059669' }}>已付款</span>
+                  )}
                 </div>
               </div>
             </div>

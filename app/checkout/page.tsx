@@ -66,6 +66,7 @@ export default function CheckoutPage() {
   const [creditsToUse, setCreditsToUse] = useState(0);
   const [isLineLoggedIn, setIsLineLoggedIn] = useState(false);
   const [lineCustomerId, setLineCustomerId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'cod'>('credit_card');
 
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -348,13 +349,41 @@ export default function CheckoutPage() {
       const paymentResult = await initPaymentForCart(
         cart.id,
         customerInfo,
-        creditsToUse > 0 ? { credits_used: creditsToUse } : undefined,
+        { ...(creditsToUse > 0 && { credits_used: creditsToUse }), payment_method: paymentMethod },
         shippingMethod
       );
       console.log('[Checkout] Payment initialized:', paymentResult);
 
       if (!paymentResult.success) {
         throw new Error(paymentResult.error || 'Payment initialization failed');
+      }
+
+      // 貨到付款：不走 ECPay，直接 complete cart
+      if (paymentMethod === 'cod') {
+        try {
+          const completeRes = await fetch(
+            `${config.medusa.backendUrl}/store/carts/${cart.id}/complete`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-publishable-api-key': config.medusa.publishableKey,
+              },
+            }
+          );
+          if (completeRes.ok) {
+            localStorage.removeItem('medusa_cart_id');
+            window.location.href = `/checkout/complete?cart_id=${cart.id}&payment_method=cod`;
+            return;
+          } else {
+            const errData = await completeRes.json().catch(() => ({}));
+            throw new Error(errData.message || '訂單建立失敗');
+          }
+        } catch (err: any) {
+          setError(err.message || '訂單建立失敗');
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       // 2. 組合商品名稱
@@ -501,7 +530,7 @@ export default function CheckoutPage() {
                 {config.features.homeDelivery && (
                   <button
                     type="button"
-                    onClick={() => setShippingMethod('home')}
+                    onClick={() => { setShippingMethod('home'); setPaymentMethod('credit_card'); }}
                     className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
                       shippingMethod === 'home'
                         ? 'border-white bg-white/10'
@@ -515,6 +544,39 @@ export default function CheckoutPage() {
                     </span>
                   </button>
                 )}
+              </div>
+
+              {/* 付款方式 */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium mb-3">付款方式</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-colors ${paymentMethod === 'credit_card' ? 'border-[#D4AF37] bg-[rgba(212,175,55,0.1)]' : 'border-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="credit_card"
+                      checked={paymentMethod === 'credit_card'}
+                      onChange={() => setPaymentMethod('credit_card')}
+                      className="sr-only"
+                    />
+                    <span className="block text-sm font-medium">💳 信用卡</span>
+                    <span className="block text-xs text-gray-500 mt-1">線上刷卡付款</span>
+                  </label>
+                  {shippingMethod === 'cvs' && (
+                    <label className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-colors ${paymentMethod === 'cod' ? 'border-[#D4AF37] bg-[rgba(212,175,55,0.1)]' : 'border-gray-600'}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                        className="sr-only"
+                      />
+                      <span className="block text-sm font-medium">🏪 取貨付款</span>
+                      <span className="block text-xs text-gray-500 mt-1">超商取貨時付款</span>
+                    </label>
+                  )}
+                </div>
               </div>
 
               {/* 超商取貨 */}
@@ -727,7 +789,7 @@ export default function CheckoutPage() {
               disabled={isSubmitting || cartLoading}
               className="btn-primary w-full py-3 mt-6 hidden lg:block disabled:opacity-50"
             >
-              {isSubmitting ? '處理中...' : '前往付款'}
+              {isSubmitting ? '處理中...' : paymentMethod === 'cod' ? '確認下單' : '前往付款'}
             </button>
 
             {/* 返回購物 */}
@@ -751,7 +813,7 @@ export default function CheckoutPage() {
           disabled={isSubmitting || cartLoading}
           className="btn-primary w-full py-4 text-lg disabled:opacity-50"
         >
-          {isSubmitting ? '處理中...' : `前往付款 ${formatPrice(total)}`}
+          {isSubmitting ? '處理中...' : paymentMethod === 'cod' ? `確認下單 ${formatPrice(total)}` : `前往付款 ${formatPrice(total)}`}
         </button>
       </div>
     </div>
