@@ -678,7 +678,7 @@ export default function CheckoutPage() {
                 </span>
               </div>
               <CreditsSelector
-                customerId={cart?.customer_id || null}
+                customerId={null}
                 subtotal={subtotal}
                 onCreditsChange={setCreditsToUse}
               />
