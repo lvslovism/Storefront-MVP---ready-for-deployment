@@ -4,8 +4,11 @@ import { medusa } from '@/lib/config';
 const BACKEND_URL = medusa.backendUrl;
 const PUBLISHABLE_KEY = medusa.publishableKey;
 
-// 外部配送 shipping option（由 ECPay 處理，0 元）
-const EXTERNAL_SHIPPING_OPTION_ID = 'so_01KGT10N7MH9ACTVKJE5G223G8';
+// Shipping option IDs（Medusa）
+const SHIPPING_OPTIONS = {
+  cvs: 'so_01KGT10N7MH9ACTVKJE5G223G8',   // 超商取貨（ECPay處理）
+  home: 'so_01KGYTF42QQBBP9PNBPBZAZF73',  // 宅配到府
+};
 
 interface CustomerInfo {
   firstName?: string;
@@ -27,11 +30,15 @@ interface CustomerInfo {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { cartId, customerInfo, metadata } = await request.json() as {
+    const { cartId, customerInfo, metadata, shippingMethod } = await request.json() as {
       cartId: string;
       customerInfo?: CustomerInfo;
       metadata?: Record<string, any>;
+      shippingMethod?: 'cvs' | 'home';
     };
+
+    // 根據配送方式選擇 shipping option
+    const shippingOptionId = SHIPPING_OPTIONS[shippingMethod || 'cvs'];
 
     if (!cartId) {
       return NextResponse.json(
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Add shipping method to cart (was step 1)
-    console.log('[Payment Init] Adding shipping method...');
+    console.log('[Payment Init] Adding shipping method:', shippingMethod, '->', shippingOptionId);
     const shippingRes = await fetch(
       `${BACKEND_URL}/store/carts/${cartId}/shipping-methods`,
       {
@@ -91,7 +98,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
           'x-publishable-api-key': PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ option_id: EXTERNAL_SHIPPING_OPTION_ID }),
+        body: JSON.stringify({ option_id: shippingOptionId }),
       }
     );
 

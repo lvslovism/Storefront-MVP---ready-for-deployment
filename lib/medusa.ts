@@ -287,16 +287,19 @@ export interface CustomerInfo {
  * POST /api/payment/init → Medusa payment collection + session
  * @param cartId - Medusa cart ID
  * @param customerInfo - Optional customer info to update cart
+ * @param metadata - Optional metadata
+ * @param shippingMethod - 'cvs' or 'home'
  */
 export async function initPaymentForCart(
   cartId: string,
   customerInfo?: CustomerInfo,
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
+  shippingMethod?: 'cvs' | 'home'
 ): Promise<PaymentInitResult> {
   const res = await fetch('/api/payment/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cartId, customerInfo, metadata }),
+    body: JSON.stringify({ cartId, customerInfo, metadata, shippingMethod }),
   });
 
   const data = await res.json();
