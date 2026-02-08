@@ -100,36 +100,6 @@ export default async function HomePage() {
           }}
         />
 
-        {/* CTA 按鈕 - 左下角 */}
-        <div className="absolute inset-0 z-10 flex items-end">
-          <div className="max-w-7xl mx-auto px-6 md:px-10 w-full pb-16 md:pb-20">
-            <div className="flex gap-4">
-              {/* 查看商品 - 金色填充 */}
-              <Link
-                href="/products"
-                className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
-                style={{
-                  background: 'linear-gradient(135deg, #D4AF37, #B8962E)',
-                  color: '#000',
-                  boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
-                }}
-              >
-                查看商品
-              </Link>
-              {/* 加入 LINE - 透明邊框 */}
-              <a
-                href="#membership"
-                className="px-8 py-3 rounded-full text-sm font-semibold tracking-wider transition-all duration-300"
-                style={{
-                  border: '1px solid rgba(212,175,55,0.5)',
-                  color: '#D4AF37',
-                }}
-              >
-                加入 LINE
-              </a>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* ═══════════ 信任數字條 ═══════════ */}
