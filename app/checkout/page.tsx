@@ -64,6 +64,7 @@ export default function CheckoutPage() {
   const [isSelectingStore, setIsSelectingStore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creditsToUse, setCreditsToUse] = useState(0);
+  const [isLineLoggedIn, setIsLineLoggedIn] = useState(false);
 
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -153,6 +154,14 @@ export default function CheckoutPage() {
         clearInterval(pollingRef.current);
       }
     };
+  }, []);
+
+  // 檢查 LINE 登入狀態
+  useEffect(() => {
+    fetch('/api/auth/line/session')
+      .then(res => res.json())
+      .then(data => { if (data.logged_in) setIsLineLoggedIn(true); })
+      .catch(() => {});
   }, []);
 
   // 更新表單
@@ -619,17 +628,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* 提交按鈕（手機版） */}
-            <div className="lg:hidden">
-              <button
-                type="submit"
-                disabled={isSubmitting || cartLoading}
-                className="btn-primary w-full py-4 text-lg disabled:opacity-50"
-              >
-                {isSubmitting ? '處理中...' : `前往付款 ${formatPrice(total)}`}
-              </button>
-            </div>
-          </form>
+            </form>
         </div>
 
         {/* 右側：訂單摘要 */}
@@ -655,7 +654,7 @@ export default function CheckoutPage() {
                   <div className="flex-grow min-w-0">
                     <p className="text-sm font-medium truncate">{item.title}</p>
                     <p className="text-xs text-gray-500">x{item.quantity}</p>
-                    <p className="text-sm font-bold">{formatPrice(item.subtotal)}</p>
+                    <p className="text-sm font-bold">{formatPrice(item.unit_price * item.quantity)}</p>
                   </div>
                 </li>
               ))}
@@ -677,6 +676,14 @@ export default function CheckoutPage() {
                   )}
                 </span>
               </div>
+              {/* 登入提醒 */}
+              {!isLineLoggedIn && (
+                <div className="my-3 p-3 rounded-lg" style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                  <p className="text-sm" style={{ color: '#D4AF37' }}>
+                    💡 <a href="/api/auth/line" className="underline font-medium">登入 LINE 帳號</a> 即可使用購物金折抵，並自動累積消費紀錄
+                  </p>
+                </div>
+              )}
               <CreditsSelector
                 customerId={null}
                 subtotal={subtotal}
@@ -719,8 +726,22 @@ export default function CheckoutPage() {
             >
               ← 繼續購物
             </Link>
+            <div className="h-20 lg:hidden"></div>
           </div>
         </div>
+      </div>
+
+      {/* 手機版 fixed 底部按鈕 */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 lg:hidden" style={{ background: 'linear-gradient(180deg, transparent, #0a0a0a 30%)' }}>
+        <button
+          type="submit"
+          form="checkout-form"
+          onClick={handleSubmit}
+          disabled={isSubmitting || cartLoading}
+          className="btn-primary w-full py-4 text-lg disabled:opacity-50"
+        >
+          {isSubmitting ? '處理中...' : `前往付款 ${formatPrice(total)}`}
+        </button>
       </div>
     </div>
   );
