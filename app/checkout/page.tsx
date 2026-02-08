@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [creditsToUse, setCreditsToUse] = useState(0);
   const [isLineLoggedIn, setIsLineLoggedIn] = useState(false);
+  const [lineCustomerId, setLineCustomerId] = useState<string | null>(null);
 
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -160,7 +161,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch('/api/auth/line/session')
       .then(res => res.json())
-      .then(data => { if (data.logged_in) setIsLineLoggedIn(true); })
+      .then(data => {
+        if (data.logged_in) {
+          setIsLineLoggedIn(true);
+          if (data.customer_id) setLineCustomerId(data.customer_id);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -690,7 +696,7 @@ export default function CheckoutPage() {
                 </div>
               )}
               <CreditsSelector
-                customerId={null}
+                customerId={lineCustomerId}
                 subtotal={subtotal}
                 onCreditsChange={setCreditsToUse}
               />

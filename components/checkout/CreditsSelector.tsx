@@ -27,7 +27,6 @@ export default function CreditsSelector({
   const [creditsToUse, setCreditsToUse] = useState(0)
   const [useCredits, setUseCredits] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [resolvedCustomerId, setResolvedCustomerId] = useState<string | null>(customerId)
 
   // 計算最大可用金額
   const maxUsable = walletInfo 
@@ -40,18 +39,7 @@ export default function CreditsSelector({
   // 查詢餘額
   const fetchBalance = useCallback(async () => {
     setLoading(true)
-    let cid = customerId
-
-    if (!cid) {
-      try {
-        const sessionRes = await fetch('/api/auth/line/session')
-        const sessionData = await sessionRes.json()
-        if (sessionData.logged_in && sessionData.customer_id) {
-          cid = sessionData.customer_id
-          setResolvedCustomerId(cid)
-        }
-      } catch (e) {}
-    }
+    const cid = customerId
 
     if (!cid) {
       setLoading(false)
@@ -106,7 +94,7 @@ export default function CreditsSelector({
   // 載入中不顯示
   if (loading) return null
   // 沒有 customer 或餘額為 0，不顯示
-  if (!resolvedCustomerId && !customerId) return null
+  if (!customerId) return null
   if (!walletInfo || walletInfo.balance <= 0) return null
 
   return (
