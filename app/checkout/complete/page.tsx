@@ -302,7 +302,7 @@ function CheckoutCompleteContent() {
                 )}
                 <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
                   <span className="text-gray-900">合計</span>
-                  <span style={{ color: '#D4AF37' }}>{formatPrice(total)}</span>
+                  <span style={{ color: '#D4AF37' }}>{formatPrice(paidAmount)}</span>
                 </div>
               </div>
             </div>
