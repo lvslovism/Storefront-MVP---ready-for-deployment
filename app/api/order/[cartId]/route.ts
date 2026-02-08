@@ -55,9 +55,9 @@ export async function GET(
 
     // Query orders and find by cart_id
     // Medusa v2 doesn't support direct cart_id filter, so we fetch recent orders and filter
-    // Request +items.quantity to get item quantities
+    // Request *items.detail to get quantity from detail relation
     const response = await fetch(
-      `${MEDUSA_BACKEND_URL}/admin/orders?fields=id,display_id,status,created_at,total,subtotal,*items,+items.quantity,*shipping_address,*summary,*shipping_methods,metadata&limit=20&order=-created_at`,
+      `${MEDUSA_BACKEND_URL}/admin/orders?fields=id,display_id,status,created_at,total,subtotal,*items,*items.detail,*shipping_address,*summary,*shipping_methods,metadata&limit=20&order=-created_at`,
       {
         headers: { 'Authorization': `Bearer ${token}` },
       }
