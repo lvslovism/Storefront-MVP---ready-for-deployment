@@ -22,7 +22,7 @@
   },
   "gateway": {
     "url": "https://ecpay-gateway-production.up.railway.app",
-    "paymentApiKey": "gk_1e301592bab9a09f42b572a839492a2e29f1fac8a642946e482f9938a60c7b5b",
+    "paymentApiKey": "gk_298e5234b438daf937c849447ca12126b76eac9af21126203f2f0b012ed9cbdd",
     "logisticsApiKey": "gk_ff72ac9636b547d395c68f583645ff584bcc01022cdc6075a38c13cc06a39167"
   },
   "features": {
