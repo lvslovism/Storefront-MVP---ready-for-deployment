@@ -290,12 +290,13 @@ export interface CustomerInfo {
  */
 export async function initPaymentForCart(
   cartId: string,
-  customerInfo?: CustomerInfo
+  customerInfo?: CustomerInfo,
+  metadata?: Record<string, any>
 ): Promise<PaymentInitResult> {
   const res = await fetch('/api/payment/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cartId, customerInfo }),
+    body: JSON.stringify({ cartId, customerInfo, metadata }),
   });
 
   const data = await res.json();

@@ -330,7 +330,7 @@ export default function CheckoutPage() {
         city: shippingMethod === 'cvs' ? 'Taiwan' : (formData.city || 'Taiwan'),
         postalCode: shippingMethod === 'home' ? formData.zipCode : '000',
       };
-      const paymentResult = await initPaymentForCart(cart.id, customerInfo);
+      const paymentResult = await initPaymentForCart(cart.id, customerInfo, creditsToUse > 0 ? { credits_used: creditsToUse } : undefined);
       console.log('[Checkout] Payment initialized:', paymentResult);
 
       if (!paymentResult.success) {

@@ -27,9 +27,10 @@ interface CustomerInfo {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { cartId, customerInfo } = await request.json() as {
+    const { cartId, customerInfo, metadata } = await request.json() as {
       cartId: string;
       customerInfo?: CustomerInfo;
+      metadata?: Record<string, any>;
     };
 
     if (!cartId) {
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
                 country_code: 'tw',
                 postal_code: customerInfo.postalCode || '000',
               },
+              ...(metadata && { metadata }),
             }),
           }
         );
