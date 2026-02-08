@@ -1,50 +1,14 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-// 格式化價格
+// === 工具函數 ===
+
 function formatPrice(amount: number): string {
   if (!amount || isNaN(amount)) return 'NT$ 0';
   return `NT$ ${Math.round(amount).toLocaleString()}`;
-}
-
-// 從 item 取得單價
-function getItemUnitPrice(item: any): number {
-  let price = item.unit_price ?? item.raw_unit_price?.value ?? 0;
-  if (typeof price === 'string') price = parseFloat(price) || 0;
-  return price;
-}
-
-// 從 item 取得總價
-function getItemTotal(item: any): number {
-  let total = item.total ?? item.raw_total?.value ?? 0;
-  if (typeof total === 'string') total = parseFloat(total) || 0;
-  return total;
-}
-
-// 從 item 取得數量（Medusa v2 可能沒有 quantity，需計算）
-function getItemQuantity(item: any, order?: Order | null): number {
-  // 直接從 item 取得
-  if (item.quantity && item.quantity > 0) return item.quantity;
-  if (item.detail?.quantity && item.detail.quantity > 0) return item.detail.quantity;
-
-  // 如果只有一個品項，從訂單總計反推數量
-  if (order && order.items?.length === 1) {
-    const orderTotal = order.summary?.current_order_total ?? 0;
-    const shippingFee = order.shipping_methods?.[0]?.amount ?? 0;
-    const unitPrice = getItemUnitPrice(item);
-
-    if (unitPrice > 0) {
-      // 商品總計 = 訂單總計 - 運費
-      const itemsTotal = orderTotal - shippingFee;
-      const calculatedQty = Math.round(itemsTotal / unitPrice);
-      if (calculatedQty > 0) return calculatedQty;
-    }
-  }
-
-  return 1; // 預設
 }
 
 interface Order {
@@ -53,6 +17,13 @@ interface Order {
   status: string;
   created_at: string;
   items: any[];
+  total: number;
+  subtotal: number;
+  discount_total: number;
+  discount_subtotal: number;
+  item_total: number;
+  item_subtotal: number;
+  shipping_total: number;
   shipping_address?: {
     first_name?: string;
     last_name?: string;
@@ -64,6 +35,7 @@ interface Order {
   shipping_methods?: Array<{
     name?: string;
     amount?: number;
+    shipping_option_id?: string;
   }>;
   summary?: {
     current_order_total?: number;
@@ -77,38 +49,14 @@ interface Order {
   };
 }
 
-// 取得訂單總計
-function getOrderTotal(order: Order): number {
-  const o = order as any;
-  let rawTotal = o.summary?.current_order_total ?? o.total ?? o.raw_total?.value ?? 0;
-  if (typeof rawTotal === 'string') rawTotal = parseFloat(rawTotal) || 0;
-  return rawTotal;
-}
-
-// 取得運費
-function getShippingFee(order: Order): number {
-  const o = order as any;
-  let shipping = o.summary?.shipping_total ?? o.shipping_total ?? o.shipping_methods?.[0]?.amount ?? 0;
-  if (typeof shipping === 'string') shipping = parseFloat(shipping) || 0;
-  return shipping;
-}
-
-// 計算小計
-function getSubtotal(order: Order): number {
-  const o = order as any;
-  let subtotal = o.summary?.subtotal ?? o.summary?.item_subtotal ?? o.subtotal ?? o.item_subtotal ?? 0;
-  if (typeof subtotal === 'string') subtotal = parseFloat(subtotal) || 0;
-  if (subtotal === 0 && order.items?.length > 0) {
-    subtotal = order.items.reduce((sum: number, item: any) => sum + getItemTotal(item), 0);
-  }
-  return subtotal;
-}
-
 function CheckoutCompleteContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [order, setOrder] = useState<Order | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCompletedRef = useRef(false);
 
   const cartId = searchParams.get('cart_id');
   const tradeNo = searchParams.get('MerchantTradeNo') || searchParams.get('trade_no');
@@ -116,43 +64,96 @@ function CheckoutCompleteContent() {
   const rtnMsg = searchParams.get('RtnMsg');
   const tradeAmt = searchParams.get('TradeAmt');
   const paymentType = searchParams.get('PaymentType');
-  const paymentMethodParam = searchParams.get('payment_method'); // COD support
+  const paymentMethodParam = searchParams.get('payment_method');
 
   useEffect(() => {
     if (rtnCode === '1') {
       setStatus('success');
       localStorage.removeItem('medusa_cart_id');
-      if (cartId) fetchOrderDetails(cartId);
+      if (cartId) startOrderFlow(cartId);
     } else if (rtnCode) {
       setStatus('failed');
     } else {
+      // COD 或其他無 rtnCode 的情況
       setStatus('success');
-      if (cartId) fetchOrderDetails(cartId);
+      if (cartId) startOrderFlow(cartId);
     }
+
+    return () => {
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+    };
   }, [rtnCode, cartId]);
 
-  async function fetchOrderDetails(cartId: string) {
+  /**
+   * 主流程：先嘗試備用 complete cart，再查 order，查不到就 polling
+   */
+  async function startOrderFlow(cartId: string) {
+    // 步驟 1：備用 complete cart（冪等，已 complete 不會重複）
+    if (!hasCompletedRef.current) {
+      hasCompletedRef.current = true;
+      try {
+        await fetch('/api/cart/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cart_id: cartId }),
+        });
+      } catch (err) {
+        // 不阻塞，Gateway webhook 可能已經處理了
+        console.log('[Complete] Backup complete attempt done');
+      }
+    }
+
+    // 步驟 2：查 order
+    await fetchOrderWithRetry(cartId, 0);
+  }
+
+  /**
+   * 查 order，找不到就每 2 秒重試，最多 5 次
+   */
+  async function fetchOrderWithRetry(cartId: string, attempt: number) {
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY = 2000;
+
     try {
       const res = await fetch(`/api/order/${encodeURIComponent(cartId)}`);
+
       if (res.ok) {
         const data = await res.json();
         if (data.order) {
-          console.log('Order loaded:', data.order);
+          console.log('[Order] Loaded on attempt', attempt + 1, ':', data.matched_by);
           setOrder(data.order);
+          setRetryCount(0);
+          return;
         }
+      }
+
+      // 404 或無 order — 可能 Gateway webhook 還沒處理完
+      if (attempt < MAX_RETRIES) {
+        console.log(`[Order] Not found, retry ${attempt + 1}/${MAX_RETRIES} in ${RETRY_DELAY}ms...`);
+        setRetryCount(attempt + 1);
+        pollingRef.current = setTimeout(() => {
+          fetchOrderWithRetry(cartId, attempt + 1);
+        }, RETRY_DELAY);
       } else {
-        const error = await res.json();
-        setOrderError(error.error || 'Failed to load order');
+        console.warn('[Order] Max retries reached');
+        setOrderError('訂單資料載入中，請稍後重新整理頁面');
       }
     } catch (err) {
-      console.error('Failed to fetch order:', err);
-      setOrderError('Failed to load order details');
+      console.error('[Order] Fetch error:', err);
+      if (attempt < MAX_RETRIES) {
+        pollingRef.current = setTimeout(() => {
+          fetchOrderWithRetry(cartId, attempt + 1);
+        }, RETRY_DELAY);
+      } else {
+        setOrderError('無法載入訂單詳情');
+      }
     }
   }
 
+  // === 顯示輔助函數 ===
+
   function formatPaymentType(type: string | null): string {
-    // COD 取貨付款
-    if (paymentMethodParam === 'cod') return '取貨付款';
+    if (paymentMethodParam === 'cod') return '貨到付款';
     if (!type) return '線上付款';
     const types: Record<string, string> = {
       'Credit_CreditCard': '信用卡',
@@ -165,17 +166,14 @@ function CheckoutCompleteContent() {
   }
 
   function formatShippingMethod(order: Order): string {
-    // 1. 從 shipping_methods name 判斷（最可靠）
     const name = order.shipping_methods?.[0]?.name || '';
-    if (name.includes('宅配') || name.includes('home') || name.includes('Home')) return '宅配到府';
-    if (name.includes('超商') || name.includes('CVS') || name.includes('cvs')) return '超商取貨';
+    if (name.includes('宅') || name.includes('home') || name.includes('Home')) return '宅配到府';
+    if (name.includes('超') || name.includes('CVS') || name.includes('cvs')) return '超商取貨';
 
-    // 2. 從 shipping_option_id 判斷
-    const optionId = (order.shipping_methods?.[0] as any)?.shipping_option_id;
+    const optionId = order.shipping_methods?.[0]?.shipping_option_id;
     if (optionId === 'so_01KGYTF42QQBBP9PNBPBZAZF73') return '宅配到府';
     if (optionId === 'so_01KGT10N7MH9ACTVKJE5G223G8') return '超商取貨';
 
-    // 3. 從 metadata fallback
     const method = order.metadata?.shipping_method;
     if (method === 'home') return '宅配到府';
     if (method === 'cvs') return '超商取貨';
@@ -183,7 +181,8 @@ function CheckoutCompleteContent() {
     return '標準配送';
   }
 
-  // Loading
+  // === 渲染 ===
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -195,7 +194,6 @@ function CheckoutCompleteContent() {
     );
   }
 
-  // Failed
   if (status === 'failed') {
     return (
       <div className="min-h-screen bg-white py-16">
@@ -205,9 +203,9 @@ function CheckoutCompleteContent() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">付款失敗</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">付款未成功</h1>
           <p className="text-gray-600 mb-2">
-            {rtnMsg || '付款過程中發生錯誤，請稍後再試'}
+            {rtnMsg || '付款過程中發生問題，請重新嘗試'}
           </p>
           {tradeNo && (
             <p className="text-sm text-gray-500 mb-8">交易編號：{tradeNo}</p>
@@ -217,7 +215,7 @@ function CheckoutCompleteContent() {
               重新結帳
             </Link>
             <Link href="/" className="inline-block px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
-              返回商店
+              返回首頁
             </Link>
           </div>
         </div>
@@ -225,10 +223,13 @@ function CheckoutCompleteContent() {
     );
   }
 
-  // Success
-  const subtotal = order ? getSubtotal(order) : 0;
-  const shippingFee = order ? getShippingFee(order) : 0;
-  const total = order ? getOrderTotal(order) : (tradeAmt ? parseInt(tradeAmt) : 0);
+  // === Success 頁面 ===
+  // 使用 order 頂層的正確金額欄位（來自單筆 endpoint）
+  const subtotal = order?.item_subtotal ?? order?.subtotal ?? 0;
+  const discountTotal = order?.discount_total ?? 0;
+  const shippingFee = order?.shipping_total ?? 0;
+  const creditsUsed = order?.metadata?.credits_used ?? 0;
+  const total = order?.total ?? (tradeAmt ? parseInt(tradeAmt) : 0);
 
   return (
     <div className="min-h-screen bg-white py-8">
@@ -241,7 +242,7 @@ function CheckoutCompleteContent() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">感謝您的訂購！</h1>
-          <p className="text-gray-600">訂單已成功建立，我們會盡快為您處理。</p>
+          <p className="text-gray-600">我們已收到您的訂單，將盡快為您處理</p>
         </div>
 
         {/* Order Number */}
@@ -259,25 +260,21 @@ function CheckoutCompleteContent() {
         {/* Order Details */}
         {order && (
           <>
-            {/* Items */}
+            {/* Items - 直接使用 Medusa 回傳的 quantity 和 total */}
             <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
               <h2 className="font-bold text-gray-900 mb-4">商品明細</h2>
               <ul className="divide-y divide-gray-200">
-                {order.items?.map((item, idx) => {
-                  const qty = getItemQuantity(item, order);
-                  const unitPrice = getItemUnitPrice(item);
-                  const itemTotal = unitPrice * qty;
-
-                  return (
-                    <li key={item.id || idx} className="py-3 flex justify-between items-center">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="text-gray-700 truncate">{item.title || item.product_title || '商品'}</span>
-                        <span className="text-sm text-gray-500 flex-shrink-0">x{qty}</span>
-                      </div>
-                      <span className="font-medium text-gray-900 flex-shrink-0 ml-4">{formatPrice(itemTotal)}</span>
-                    </li>
-                  );
-                })}
+                {order.items?.map((item: any, idx: number) => (
+                  <li key={item.id || idx} className="py-3 flex justify-between items-center">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-gray-700 truncate">{item.title || item.product_title || '商品'}</span>
+                      <span className="text-sm text-gray-500 flex-shrink-0">x{item.quantity ?? 1}</span>
+                    </div>
+                    <span className="font-medium text-gray-900 flex-shrink-0 ml-4">
+                      {formatPrice(item.subtotal ?? item.unit_price ?? 0)}
+                    </span>
+                  </li>
+                ))}
               </ul>
 
               {/* Totals */}
@@ -286,18 +283,24 @@ function CheckoutCompleteContent() {
                   <span className="text-gray-500">小計</span>
                   <span className="text-gray-900">{formatPrice(subtotal)}</span>
                 </div>
+                {discountTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span style={{ color: '#DC2626' }}>折扣</span>
+                    <span style={{ color: '#DC2626' }}>-{formatPrice(discountTotal)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">運費</span>
                   <span className="text-gray-900">{shippingFee === 0 ? '免運' : formatPrice(shippingFee)}</span>
                 </div>
-                {order.metadata?.credits_used && order.metadata.credits_used > 0 && (
+                {creditsUsed > 0 && (
                   <div className="flex justify-between text-sm">
                     <span style={{ color: '#D4AF37' }}>購物金折抵</span>
-                    <span style={{ color: '#D4AF37' }}>-{formatPrice(order.metadata.credits_used)}</span>
+                    <span style={{ color: '#D4AF37' }}>-{formatPrice(creditsUsed)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
-                  <span className="text-gray-900">總計</span>
+                  <span className="text-gray-900">合計</span>
                   <span style={{ color: '#D4AF37' }}>{formatPrice(total)}</span>
                 </div>
               </div>
@@ -327,7 +330,7 @@ function CheckoutCompleteContent() {
                 )}
                 {order.shipping_address && !order.metadata?.cvs_store_name && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">收件地址</span>
+                    <span className="text-gray-500">配送地址</span>
                     <span className="text-gray-900 text-right max-w-[200px]">
                       {order.shipping_address.postal_code} {order.shipping_address.city} {order.shipping_address.address_1}
                     </span>
@@ -365,7 +368,7 @@ function CheckoutCompleteContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">付款狀態</span>
                   {paymentMethodParam === 'cod' ? (
-                    <span className="font-medium" style={{ color: '#D97706' }}>待付款 - 取貨時付款</span>
+                    <span className="font-medium" style={{ color: '#D97706' }}>待付款 - 貨到付款</span>
                   ) : (
                     <span className="font-medium" style={{ color: '#059669' }}>已付款</span>
                   )}
@@ -377,41 +380,59 @@ function CheckoutCompleteContent() {
             <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}>
               <h3 className="font-bold text-amber-800 mb-2">接下來...</h3>
               <ul className="text-sm text-amber-700 space-y-1">
-                <li>1. 我們會在 1-2 個工作天內處理您的訂單</li>
-                <li>2. 出貨後會透過 LINE 或簡訊通知您</li>
-                <li>3. {formatShippingMethod(order).includes('超商') ? '超商取貨預計 2-3 天到貨' : '宅配預計 1-2 天送達'}</li>
+                <li>1. 我們將於 1-2 個工作天內為您出貨</li>
+                <li>2. 出貨後將透過 LINE 通知您出貨資訊</li>
+                <li>3. {formatShippingMethod(order).includes('超商') ? '超商取貨約 2-3 個工作天' : '宅配約 1-2 天送達'}</li>
               </ul>
             </div>
           </>
         )}
 
-        {/* Loading order details */}
+        {/* Loading order with retry indicator */}
         {!order && !orderError && cartId && (
           <div className="rounded-lg p-6 mb-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
             <div className="animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
               <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
             </div>
-            <p className="text-sm text-gray-500 mt-2">正在載入訂單詳情...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {retryCount > 0 ? `正在載入訂單詳情（第 ${retryCount} 次嘗試）...` : '正在載入訂單詳情...'}
+            </p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {orderError && (
+          <div className="rounded-lg p-6 mb-6 text-center" style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <p className="text-sm text-red-600 mb-2">{orderError}</p>
+            <button
+              onClick={() => {
+                setOrderError(null);
+                if (cartId) fetchOrderWithRetry(cartId, 0);
+              }}
+              className="text-sm text-red-700 underline hover:no-underline"
+            >
+              重新載入
+            </button>
           </div>
         )}
 
         {/* Fallback for old redirects without cart_id */}
         {!order && !cartId && (
           <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}>
-            <h3 className="font-bold text-amber-800 mb-3">接下來會發生什麼？</h3>
+            <h3 className="font-bold text-amber-800 mb-3">接下來您將會收到通知</h3>
             <ul className="text-sm text-amber-700 space-y-2">
               <li className="flex items-start gap-2">
                 <span>1.</span>
-                <span>我們會在 1-2 個工作天內處理您的訂單</span>
+                <span>我們將於 1-2 個工作天內為您出貨</span>
               </li>
               <li className="flex items-start gap-2">
                 <span>2.</span>
-                <span>出貨後會透過簡訊/Email 通知您</span>
+                <span>出貨後將透過簡訊/Email 通知</span>
               </li>
               <li className="flex items-start gap-2">
                 <span>3.</span>
-                <span>超商取貨預計 2-3 天到貨，宅配預計 1-2 天</span>
+                <span>超商取貨約 2-3 個工作天，宅配約 1-2 天</span>
               </li>
             </ul>
           </div>
@@ -432,7 +453,7 @@ function CheckoutCompleteContent() {
             className="inline-block text-center py-3 px-8 rounded-lg font-medium text-white"
             style={{ backgroundColor: '#06C755' }}
           >
-            加入 LINE 查訂單
+            加 LINE 追蹤訂單
           </Link>
         </div>
       </div>
