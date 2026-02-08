@@ -164,6 +164,11 @@ export interface CartItem {
   };
 }
 
+export interface CartPromotion {
+  code: string;
+  is_automatic?: boolean;
+}
+
 export interface Cart {
   id: string;
   email: string | null;
@@ -181,6 +186,7 @@ export interface Cart {
   shipping_address: Address | null;
   billing_address: Address | null;
   shipping_methods: ShippingMethod[];
+  promotions?: CartPromotion[];
 }
 
 export interface Address {

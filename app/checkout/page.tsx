@@ -48,6 +48,13 @@ const SHIPPING_CONFIG = {
   },
 };
 
+// 滿額自動折扣設定（FULL2000：滿 $2000 折 $200）
+const AUTO_DISCOUNT_CONFIG = {
+  code: 'FULL2000',
+  threshold: 2000,
+  amount: 200,
+};
+
 // 根據配送方式和商品小計，取得運費和 shipping option ID
 function getShippingInfo(method: ShippingMethod, subtotal: number) {
   const config = SHIPPING_CONFIG[method];
@@ -76,7 +83,7 @@ const isMobileDevice = (): boolean => {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, isLoading: cartLoading } = useCart();
+  const { cart, isLoading: cartLoading, refreshCart } = useCart();
 
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('cvs');
   const [formData, setFormData] = useState<FormData>({
@@ -103,6 +110,9 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState('');
   const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null);
 
+  // 滿額自動折扣（FULL2000）
+  const [autoDiscount, setAutoDiscount] = useState<{ code: string; discount: number } | null>(null);
+
   // 用於清理 interval
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -110,8 +120,10 @@ export default function CheckoutPage() {
   const subtotal = cart?.subtotal || 0;
   const shippingInfo = getShippingInfo(shippingMethod, subtotal);
   const shippingFee = shippingInfo.fee;
-  const discount = promoApplied?.discount || 0;
-  const total = subtotal - discount - creditsToUse + shippingFee;
+  const promoDiscount = promoApplied?.discount || 0;
+  const autoDiscountAmount = autoDiscount?.discount || 0;
+  const totalDiscount = promoDiscount + autoDiscountAmount;
+  const total = subtotal - totalDiscount - creditsToUse + shippingFee;
 
   // Polling 取得門市選擇結果
   const pollCvsSelection = useCallback(async (tempTradeNo: string, maxAttempts = 30) => {
@@ -207,6 +219,71 @@ export default function CheckoutPage() {
       })
       .catch(() => {});
   }, []);
+
+  // 管理 FULL2000 滿額自動折扣
+  const lastSubtotalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!cart?.id || cartLoading) return;
+
+    const subtotal = cart.subtotal || 0;
+    const hasFull2000 = cart.promotions?.some(p => p.code === AUTO_DISCOUNT_CONFIG.code);
+
+    // 避免重複處理相同的 subtotal
+    if (lastSubtotalRef.current === subtotal) {
+      // subtotal 沒變，只更新 UI 狀態
+      if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold && hasFull2000) {
+        setAutoDiscount({
+          code: AUTO_DISCOUNT_CONFIG.code,
+          discount: AUTO_DISCOUNT_CONFIG.amount,
+        });
+      } else {
+        setAutoDiscount(null);
+      }
+      return;
+    }
+
+    lastSubtotalRef.current = subtotal;
+
+    const manageFull2000 = async () => {
+      if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold) {
+        // 達門檻：保留折扣並更新 UI
+        if (hasFull2000) {
+          setAutoDiscount({
+            code: AUTO_DISCOUNT_CONFIG.code,
+            discount: AUTO_DISCOUNT_CONFIG.amount,
+          });
+        } else {
+          // Medusa 自動折扣應該會自動套用，只需刷新 cart
+          await refreshCart();
+        }
+      } else {
+        // 未達門檻：如果有 FULL2000 就移除
+        if (hasFull2000) {
+          try {
+            console.log('[Checkout] Removing FULL2000 - subtotal below threshold:', subtotal);
+            await fetch(
+              `${config.medusa.backendUrl}/store/carts/${cart.id}/promotions`,
+              {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-publishable-api-key': config.medusa.publishableKey,
+                },
+                body: JSON.stringify({ promo_codes: [AUTO_DISCOUNT_CONFIG.code] }),
+              }
+            );
+            await refreshCart();
+          } catch (err) {
+            console.error('[Checkout] Failed to remove FULL2000:', err);
+          }
+        }
+        setAutoDiscount(null);
+      }
+    };
+
+    manageFull2000();
+  }, [cart?.id, cart?.subtotal, cart?.promotions, cartLoading, refreshCart]);
 
   // 更新表單
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -915,7 +992,15 @@ export default function CheckoutPage() {
                 {promoError && <p className="text-red-400 text-xs mt-2">{promoError}</p>}
               </div>
 
-              {/* 折扣金額顯示 */}
+              {/* 滿額自動折扣顯示 */}
+              {autoDiscount && autoDiscount.discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '#D4AF37' }}>🎉 滿額折扣</span>
+                  <span style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscount.discount)}</span>
+                </div>
+              )}
+
+              {/* 折扣碼金額顯示 */}
               {promoApplied && promoApplied.discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: '#D4AF37' }}>🏷️ 折扣碼 {promoApplied.code}</span>
@@ -952,6 +1037,13 @@ export default function CheckoutPage() {
             {shippingInfo.remaining > 0 && (
               <p className="text-xs text-gray-500 mt-4">
                 再買 {formatPrice(shippingInfo.remaining)} 即可{shippingMethod === 'cvs' ? '超商' : '宅配'}免運
+              </p>
+            )}
+
+            {/* 滿額折扣提示 */}
+            {!autoDiscount && subtotal < AUTO_DISCOUNT_CONFIG.threshold && (
+              <p className="text-xs text-gray-500 mt-2">
+                再買 {formatPrice(AUTO_DISCOUNT_CONFIG.threshold - subtotal)} 即可享滿額折 {formatPrice(AUTO_DISCOUNT_CONFIG.amount)}
               </p>
             )}
 
