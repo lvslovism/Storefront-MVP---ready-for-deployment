@@ -63,7 +63,7 @@ export default function LineLoginButton() {
         </span>
         <button
           onClick={handleLogout}
-          className="text-xs text-gray-400 hover:text-white transition-colors"
+          className="hidden sm:inline text-xs text-gray-400 hover:text-white transition-colors"
         >
           登出
         </button>
@@ -75,17 +75,17 @@ export default function LineLoginButton() {
   return (
     <a
       href="/api/auth/line"
-      className="flex items-center gap-2 px-3 py-1.5 bg-[#06C755] hover:bg-[#05b34c] text-white text-sm font-medium rounded transition-colors"
+      className="flex items-center gap-2 bg-[#06C755] hover:bg-[#05b34c] text-white font-medium rounded transition-colors px-2 py-2 md:px-3 md:py-1.5 text-sm"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="currentColor"
-        className="w-4 h-4"
+        className="w-5 h-5 md:w-4 md:h-4"
       >
         <path d="M12 2C6.48 2 2 5.82 2 10.5c0 2.62 1.39 4.98 3.58 6.56-.12.67-.64 2.72-.74 3.16-.13.55.2.54.42.4.18-.12 2.82-1.92 3.97-2.7.88.14 1.79.22 2.77.22 5.52 0 10-3.82 10-8.5S17.52 2 12 2z" />
       </svg>
-      <span>LINE 登入</span>
+      <span className="hidden md:inline">LINE 登入</span>
     </a>
   );
 }
