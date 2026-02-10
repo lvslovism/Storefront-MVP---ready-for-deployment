@@ -31,9 +31,6 @@ export default async function AboutPage() {
   const coreValues = sections.core_values;
   const cta = sections.cta;
 
-  console.log('[ABOUT] hero:', JSON.stringify(hero))
-  console.log('[ABOUT] coreValues:', JSON.stringify(coreValues))
-
   return (
     <>
       {/* JSON-LD: Organization + BreadcrumbList */}
