@@ -36,9 +36,7 @@ export async function getSection(page: string, sectionKey: string) {
     .eq('is_active', true)
     .single()
 
-  if (error && error.code !== 'PGRST116') {
-    console.error('[CMS] getSection error:', error)
-  }
+  console.log('[CMS] getSection', page, sectionKey, 'data:', JSON.stringify(data), 'error:', JSON.stringify(error))
   return data?.content || null
 }
 
@@ -52,7 +50,7 @@ export async function getAllSections(page: string) {
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
 
-  if (error) console.error('[CMS] getAllSections error:', error)
+  console.log('[CMS] getAllSections', page, 'data:', JSON.stringify(data), 'error:', JSON.stringify(error))
 
   const sections: Record<string, any> = {}
   data?.forEach(row => {
@@ -183,6 +181,7 @@ export async function getPosts(params?: {
   const { data, error, count } = await query
 
   if (error) console.error('[CMS] getPosts error:', error)
+  console.log('[CMS] getPosts count:', data?.length, 'error:', JSON.stringify(error))
   return { posts: (data as Post[]) || [], count: count || 0 }
 }
 
