@@ -58,6 +58,9 @@ function CheckoutCompleteContent() {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
 
+  // 零卡分期相關
+  const [chaileaseStatus, setChaileaseStatus] = useState<'pending' | 'approved' | 'failed' | null>(null);
+
   const cartId = searchParams.get('cart_id');
   const tradeNo = searchParams.get('MerchantTradeNo') || searchParams.get('trade_no');
   const rtnCode = searchParams.get('RtnCode');
@@ -66,7 +69,19 @@ function CheckoutCompleteContent() {
   const paymentType = searchParams.get('PaymentType');
   const paymentMethodParam = searchParams.get('payment_method');
 
+  // 零卡分期參數
+  const chaileaseSource = searchParams.get('source');
+  const chaileaseOrderId = searchParams.get('order_id');
+
   useEffect(() => {
+    // 零卡分期來源
+    if (chaileaseSource === 'chailease' && chaileaseOrderId) {
+      setStatus('success');
+      localStorage.removeItem('medusa_cart_id');
+      startChaileaseOrderFlow(chaileaseOrderId);
+      return;
+    }
+
     if (rtnCode === '1') {
       setStatus('success');
       localStorage.removeItem('medusa_cart_id');
@@ -82,7 +97,76 @@ function CheckoutCompleteContent() {
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
     };
-  }, [rtnCode, cartId]);
+  }, [rtnCode, cartId, chaileaseSource, chaileaseOrderId]);
+
+  /**
+   * 零卡分期流程：查 chailease_transactions → 取得 medusa_order_id → 查 order
+   */
+  async function startChaileaseOrderFlow(orderId: string) {
+    const MAX_RETRIES = 15; // 最多等 30 秒
+    const RETRY_DELAY = 2000;
+
+    async function pollChaileaseTransaction(attempt: number) {
+      try {
+        const res = await fetch(
+          `https://ephdzjkgpkuydpbkxnfw.supabase.co/rest/v1/chailease_transactions?order_id=eq.${encodeURIComponent(orderId)}&select=medusa_order_id,status,cart_id`,
+          {
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwaGR6amtncGt1eWRwYmt4bmZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzOTk5NTQsImV4cCI6MjA4Mzk3NTk1NH0.Hc3jVOazC84T-ROS34NbLQgt2uOSctDShb78tQMr0AE',
+            },
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const tx = data[0];
+
+            // 檢查狀態
+            if (tx.status === 'failed' || tx.status === 'cancelled') {
+              setChaileaseStatus('failed');
+              setOrderError('分期申請未通過或已取消');
+              return;
+            }
+
+            // 有 medusa_order_id 表示已核准並建立訂單
+            if (tx.medusa_order_id) {
+              setChaileaseStatus('approved');
+              // 用 cart_id 查 order
+              if (tx.cart_id) {
+                await fetchOrderWithRetry(tx.cart_id, 0);
+              }
+              return;
+            }
+
+            // 還在審核中
+            setChaileaseStatus('pending');
+          }
+        }
+
+        // 繼續 polling
+        if (attempt < MAX_RETRIES) {
+          setRetryCount(attempt + 1);
+          pollingRef.current = setTimeout(() => {
+            pollChaileaseTransaction(attempt + 1);
+          }, RETRY_DELAY);
+        } else {
+          // 超時
+          setChaileaseStatus('pending');
+          setOrderError('分期申請審核中，核准後將透過 LINE 通知您');
+        }
+      } catch (err) {
+        console.error('[Chailease] Fetch error:', err);
+        if (attempt < MAX_RETRIES) {
+          pollingRef.current = setTimeout(() => {
+            pollChaileaseTransaction(attempt + 1);
+          }, RETRY_DELAY);
+        }
+      }
+    }
+
+    await pollChaileaseTransaction(0);
+  }
 
   /**
    * 主流程：先嘗試備用 complete cart，再查 order，查不到就 polling
@@ -154,6 +238,7 @@ function CheckoutCompleteContent() {
 
   function formatPaymentType(type: string | null): string {
     if (paymentMethodParam === 'cod') return '貨到付款';
+    if (chaileaseSource === 'chailease') return '零卡分期';
     if (!type) return '線上付款';
     const types: Record<string, string> = {
       'Credit_CreditCard': '信用卡',
@@ -248,9 +333,13 @@ function CheckoutCompleteContent() {
 
         {/* Order Number */}
         <div className="rounded-lg p-6 mb-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-          <p className="text-sm text-gray-500 mb-1">訂單編號</p>
+          <p className="text-sm text-gray-500 mb-1">
+            {chaileaseSource === 'chailease' && !order ? '分期申請編號' : '訂單編號'}
+          </p>
           {order ? (
             <p className="text-3xl font-bold" style={{ color: '#D4AF37' }}>#{order.display_id}</p>
+          ) : chaileaseOrderId ? (
+            <p className="text-lg font-mono font-bold text-gray-900">{chaileaseOrderId}</p>
           ) : tradeNo ? (
             <p className="text-lg font-mono font-bold text-gray-900">{tradeNo}</p>
           ) : (
@@ -389,8 +478,36 @@ function CheckoutCompleteContent() {
           </>
         )}
 
+        {/* 零卡分期等待審核中 */}
+        {chaileaseSource === 'chailease' && chaileaseStatus === 'pending' && !order && (
+          <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}>
+            <div className="text-center mb-4">
+              <span className="text-4xl">⏳</span>
+            </div>
+            <h3 className="font-bold text-amber-800 mb-3 text-center">分期申請審核中</h3>
+            <p className="text-sm text-amber-700 text-center mb-4">
+              您的零卡分期申請已送出，中租將於數分鐘內完成審核。
+            </p>
+            <ul className="text-sm text-amber-700 space-y-2">
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                <span>審核通過後，我們將透過 LINE 通知您</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                <span>您可以關閉此頁面，稍後查看 LINE 訊息</span>
+              </li>
+            </ul>
+            {retryCount > 0 && (
+              <p className="text-xs text-amber-600 text-center mt-4">
+                正在等待審核結果（第 {retryCount} 次檢查）...
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Loading order with retry indicator */}
-        {!order && !orderError && cartId && (
+        {!order && !orderError && cartId && !chaileaseSource && (
           <div className="rounded-lg p-6 mb-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
             <div className="animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>

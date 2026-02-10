@@ -121,7 +121,12 @@ export default function CheckoutPage() {
   const [creditsToUse, setCreditsToUse] = useState(0);
   const [isLineLoggedIn, setIsLineLoggedIn] = useState(false);
   const [lineCustomerId, setLineCustomerId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'cod'>('credit_card');
+  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'cod' | 'chailease'>('credit_card');
+
+  // 零卡分期
+  const [chaileasePlans, setChaileasePlans] = useState<any[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [chaileaseLoading, setChaileaseLoading] = useState(false);
 
   // 折扣碼
   const [promoCode, setPromoCode] = useState('');
@@ -241,6 +246,25 @@ export default function CheckoutPage() {
       })
       .catch(() => {});
   }, []);
+
+  // 載入零卡分期方案（當選擇零卡分期時）
+  useEffect(() => {
+    if (paymentMethod === 'chailease' && total > 0) {
+      setChaileaseLoading(true);
+      fetch(`https://ephdzjkgpkuydpbkxnfw.supabase.co/functions/v1/chailease-plans?merchant_code=default&amount=${Math.round(total)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.plans && data.plans.length > 0) {
+            setChaileasePlans(data.plans);
+            setSelectedPlanId(data.plans[0].id); // 預設選第一個
+          } else {
+            setChaileasePlans([]);
+          }
+        })
+        .catch(() => setChaileasePlans([]))
+        .finally(() => setChaileaseLoading(false));
+    }
+  }, [paymentMethod, total]);
 
   // 管理 FULL2000 滿額自動折扣
   const lastSubtotalRef = useRef<number | null>(null);
@@ -613,6 +637,47 @@ export default function CheckoutPage() {
         }
       }
 
+      // 零卡分期：POST 到 chailease-checkout
+      if (paymentMethod === 'chailease') {
+        if (!selectedPlanId) {
+          setError('請選擇分期期數');
+          setIsSubmitting(false);
+          return;
+        }
+
+        try {
+          const chaileaseRes = await fetch(
+            'https://ephdzjkgpkuydpbkxnfw.supabase.co/functions/v1/chailease-checkout',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                cart_id: cart.id,
+                plan_id: selectedPlanId,
+                customer_name: formData.name,
+                customer_phone: formData.phone,
+                customer_email: formData.email || undefined,
+                source: 'storefront',
+              }),
+            }
+          );
+
+          const chaileaseData = await chaileaseRes.json();
+
+          if (chaileaseRes.ok && chaileaseData.payment_url) {
+            // 跳轉到中租付款頁
+            window.location.href = chaileaseData.payment_url;
+            return;
+          } else {
+            throw new Error(chaileaseData.error || '建立分期交易失敗');
+          }
+        } catch (err: any) {
+          setError(err.message || '零卡分期申請失敗，請稍後再試');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // 2. 組合商品名稱
       const itemName = cart.items
         .map((item) => `${item.title} x${item.quantity}`)
@@ -808,7 +873,45 @@ export default function CheckoutPage() {
                       <span className="block text-xs text-gray-500 mt-1">超商取貨時付款</span>
                     </label>
                   )}
+                  <label className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-colors ${paymentMethod === 'chailease' ? 'border-[#D4AF37] bg-[rgba(212,175,55,0.1)]' : 'border-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="chailease"
+                      checked={paymentMethod === 'chailease'}
+                      onChange={() => setPaymentMethod('chailease')}
+                      className="sr-only"
+                    />
+                    <span className="block text-sm font-medium">📱 零卡分期</span>
+                    <span className="block text-xs text-gray-500 mt-1">免信用卡分期付款</span>
+                  </label>
                 </div>
+
+                {/* 零卡分期方案選擇 */}
+                {paymentMethod === 'chailease' && (
+                  <div className="mt-4 p-4 rounded-lg" style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#D4AF37' }}>選擇分期期數</label>
+                    {chaileaseLoading ? (
+                      <p className="text-sm text-gray-400">載入方案中...</p>
+                    ) : chaileasePlans.length > 0 ? (
+                      <select
+                        value={selectedPlanId || ''}
+                        onChange={(e) => setSelectedPlanId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+                      >
+                        {chaileasePlans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.display_name} - {formatPrice(plan.estimated_monthly)}/期
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-sm text-gray-400">目前無可用分期方案</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">由中租零卡提供分期服務，免信用卡即可申請</p>
+                  </div>
+                )}
               </div>
 
               {/* 超商取貨 */}
