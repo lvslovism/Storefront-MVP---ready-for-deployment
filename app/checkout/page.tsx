@@ -147,7 +147,9 @@ export default function CheckoutPage() {
 
   // 從 cart.items adjustments 計算各 promotion 的實際折扣
   const discountsByCode = calculateDiscountsByCode(cart);
-  const autoDiscountAmount = discountsByCode[AUTO_DISCOUNT_CONFIG.code] || 0;
+  // 滿額折扣只有達門檻才計入
+  const rawAutoDiscount = discountsByCode[AUTO_DISCOUNT_CONFIG.code] || 0;
+  const autoDiscountAmount = subtotal >= AUTO_DISCOUNT_CONFIG.threshold ? rawAutoDiscount : 0;
   const promoDiscountAmount = promoApplied ? (discountsByCode[promoApplied.code] || 0) : 0;
   const totalDiscount = autoDiscountAmount + promoDiscountAmount;
   const total = subtotal - totalDiscount - creditsToUse + shippingFee;
@@ -1142,8 +1144,8 @@ export default function CheckoutPage() {
                 {promoError && <p className="text-red-400 text-xs mt-2">{promoError}</p>}
               </div>
 
-              {/* 滿額自動折扣顯示 */}
-              {autoDiscountAmount > 0 && (
+              {/* 滿額自動折扣顯示（只有達門檻才顯示）*/}
+              {autoDiscountAmount > 0 && subtotal >= AUTO_DISCOUNT_CONFIG.threshold && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: '#D4AF37' }}>🎉 滿額折扣</span>
                   <span style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscountAmount)}</span>
