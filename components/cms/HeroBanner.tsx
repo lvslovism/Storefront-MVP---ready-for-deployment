@@ -66,15 +66,14 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
           className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
           style={{
             backgroundImage: `url(${banner.image_url})`,
-            opacity: 0.6,
           }}
         />
-        {/* 漸層遮罩 */}
+        {/* 漸層遮罩（降低透明度，讓圖片更清晰） */}
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.2) 100%)',
+          background: 'linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.1) 100%)',
         }} />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.8) 100%)',
+          background: 'linear-gradient(180deg, transparent 70%, rgba(0,0,0,0.5) 100%)',
         }} />
       </div>
 
