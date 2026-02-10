@@ -3,15 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ephdzjkgpkuydpbkxnfw.supabase.co'
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  db: {
-    schema: 'public',
-  },
-})
+function getSupabase() {
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    db: {
+      schema: 'public',
+    },
+  })
+}
 console.log('[CMS] supabaseUrl:', supabaseUrl, 'hasKey:', !!supabaseKey, 'keyLength:', supabaseKey.length)
 
 const MERCHANT = process.env.MERCHANT_CODE || 'minjie'
@@ -19,7 +21,7 @@ const MERCHANT = process.env.MERCHANT_CODE || 'minjie'
 // Banner 查詢
 export async function getBanners(placement: string) {
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_banners')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -35,7 +37,7 @@ export async function getBanners(placement: string) {
 
 // 頁面區塊查詢
 export async function getSection(page: string, sectionKey: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_sections')
     .select('content')
     .eq('merchant_code', MERCHANT)
@@ -50,7 +52,7 @@ export async function getSection(page: string, sectionKey: string) {
 
 // 所有頁面區塊（一次查完）
 export async function getAllSections(page: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_sections')
     .select('section_key, content')
     .eq('merchant_code', MERCHANT)
@@ -70,7 +72,7 @@ export async function getAllSections(page: string) {
 // 公告查詢
 export async function getAnnouncements() {
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_announcements')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -85,7 +87,7 @@ export async function getAnnouncements() {
 
 // 推薦商品 ID 查詢
 export async function getFeaturedProductIds(placement: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_featured_products')
     .select('product_id')
     .eq('merchant_code', MERCHANT)
@@ -100,7 +102,7 @@ export async function getFeaturedProductIds(placement: string) {
 // 促銷活動查詢
 export async function getCampaigns() {
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_campaigns')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -115,7 +117,7 @@ export async function getCampaigns() {
 
 // LINE Bot 固定回覆查詢
 export async function getBotReply(triggerKey: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_bot_replies')
     .select('reply_type, reply_content')
     .eq('merchant_code', MERCHANT)
@@ -169,7 +171,7 @@ export async function getPosts(params?: {
   limit?: number
   offset?: number
 }): Promise<{ posts: Post[]; count: number }> {
-  let query = supabase
+  let query = getSupabase()
     .from('cms_posts')
     .select('*', { count: 'exact' })
     .eq('merchant_code', MERCHANT)
@@ -195,7 +197,7 @@ export async function getPosts(params?: {
 
 /** 取得單篇文章 by slug */
 export async function getPostBySlug(slug: string): Promise<Post | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_posts')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -211,7 +213,7 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
 
 /** 取得所有已發布文章的 slug（用於 generateStaticParams） */
 export async function getAllPostSlugs(): Promise<string[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_posts')
     .select('slug')
     .eq('merchant_code', MERCHANT)
@@ -223,7 +225,7 @@ export async function getAllPostSlugs(): Promise<string[]> {
 
 /** 取得精選文章 */
 export async function getFeaturedPosts(limit: number = 3): Promise<Post[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_posts')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -238,7 +240,7 @@ export async function getFeaturedPosts(limit: number = 3): Promise<Post[]> {
 
 /** 搜尋文章 */
 export async function searchPosts(keyword: string): Promise<Post[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_posts')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -256,7 +258,7 @@ export async function searchPosts(keyword: string): Promise<Post[]> {
 /** 取得單一活動 by slug */
 export async function getCampaignBySlug(slug: string) {
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_campaigns')
     .select('*')
     .eq('merchant_code', MERCHANT)
@@ -290,7 +292,7 @@ export async function getProductReviews(productHandle: string): Promise<{
   avgRating: number
   count: number
 }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('cms_reviews')
     .select('*')
     .eq('merchant_code', MERCHANT)
