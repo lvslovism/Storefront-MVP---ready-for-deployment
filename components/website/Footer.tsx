@@ -1,14 +1,47 @@
+// ═══════════════════════════════════════════════════════════════
+// components/website/Footer.tsx
+// 更新版 Footer — 新增「服務資訊」欄（政策頁連結）
+// 施工說明書 v2.1 Phase 1 Step 7
+// ⚠️ 此檔案取代現有的 components/website/Footer.tsx
+// ═══════════════════════════════════════════════════════════════
+
 import { config } from '@/lib/config';
+import Link from 'next/link';
+
+const footerLinks = [
+  { label: '常見問題', href: '/faq' },
+  { label: '配送說明', href: '/policy/shipping' },
+  { label: '退換貨政策', href: '/policy/return' },
+  { label: '隱私權政策', href: '/policy/privacy' },
+  { label: '服務條款', href: '/policy/terms' },
+];
 
 export default function WebsiteFooter() {
   return (
     <footer className="bg-black border-t border-gold/20 mt-16">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* 品牌資訊 */}
           <div>
             <h3 className="gold-text font-bold text-lg mb-4">{config.store.name}</h3>
             <p className="text-sm text-gray-400">{config.store.description}</p>
+          </div>
+
+          {/* 服務資訊（新增） */}
+          <div>
+            <h3 className="text-gold font-bold text-lg mb-4">服務資訊</h3>
+            <ul className="space-y-2 text-sm">
+              {footerLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-gray-400 hover:text-gold transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* 聯絡方式 */}

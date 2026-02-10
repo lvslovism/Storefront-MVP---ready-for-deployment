@@ -126,3 +126,177 @@ export async function getBotReply(triggerKey: string) {
 export function getCmsImageUrl(path: string) {
   return `${supabaseUrl}/storage/v1/object/public/cms-assets/${path}`
 }
+
+// ═══════════════════════════════════════════════════════════════
+// MINJIE STUDIO — lib/cms.ts 新增函式
+// 施工說明書 v2.1 Phase 1 Step 2
+// 使用方式：將以下內容貼到現有 lib/cms.ts 檔案底部
+// ═══════════════════════════════════════════════════════════════
+
+// ============ 文章 API ============
+
+export interface Post {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  content: string
+  category: string
+  tags: string[]
+  cover_image: string | null
+  og_image: string | null
+  seo_title: string | null
+  seo_description: string | null
+  related_product_ids: string[]
+  related_post_slugs: string[]
+  is_featured: boolean
+  published_at: string
+  read_time: number
+  created_at: string
+  updated_at: string
+}
+
+/** 取得已發布文章列表 */
+export async function getPosts(params?: {
+  category?: string
+  limit?: number
+  offset?: number
+}): Promise<{ posts: Post[]; count: number }> {
+  let query = supabase
+    .from('cms_posts')
+    .select('*', { count: 'exact' })
+    .eq('merchant_code', MERCHANT)
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+
+  if (params?.category) {
+    query = query.eq('category', params.category)
+  }
+  if (params?.limit) {
+    query = query.limit(params.limit)
+  }
+  if (params?.offset) {
+    query = query.range(params.offset, params.offset + (params.limit || 10) - 1)
+  }
+
+  const { data, error, count } = await query
+
+  if (error) console.error('[CMS] getPosts error:', error)
+  return { posts: (data as Post[]) || [], count: count || 0 }
+}
+
+/** 取得單篇文章 by slug */
+export async function getPostBySlug(slug: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from('cms_posts')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('slug', slug)
+    .eq('is_published', true)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[CMS] getPostBySlug error:', error)
+  }
+  return (data as Post) || null
+}
+
+/** 取得所有已發布文章的 slug（用於 generateStaticParams） */
+export async function getAllPostSlugs(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('cms_posts')
+    .select('slug')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_published', true)
+
+  if (error) console.error('[CMS] getAllPostSlugs error:', error)
+  return data?.map(d => d.slug) || []
+}
+
+/** 取得精選文章 */
+export async function getFeaturedPosts(limit: number = 3): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from('cms_posts')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_published', true)
+    .eq('is_featured', true)
+    .order('published_at', { ascending: false })
+    .limit(limit)
+
+  if (error) console.error('[CMS] getFeaturedPosts error:', error)
+  return (data as Post[]) || []
+}
+
+/** 搜尋文章 */
+export async function searchPosts(keyword: string): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from('cms_posts')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_published', true)
+    .or(`title.ilike.%${keyword}%,excerpt.ilike.%${keyword}%,content.ilike.%${keyword}%`)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  if (error) console.error('[CMS] searchPosts error:', error)
+  return (data as Post[]) || []
+}
+
+// ============ 活動 API（單一活動 by slug） ============
+
+/** 取得單一活動 by slug */
+export async function getCampaignBySlug(slug: string) {
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('cms_campaigns')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[CMS] getCampaignBySlug error:', error)
+  }
+  return data || null
+}
+
+// ============ 商品評價 API ============
+
+export interface Review {
+  id: string
+  product_handle: string
+  rating: number
+  reviewer_name: string
+  review_text: string | null
+  is_verified: boolean
+  created_at: string
+}
+
+/** 取得商品評價 */
+export async function getProductReviews(productHandle: string): Promise<{
+  reviews: Review[]
+  avgRating: number
+  count: number
+}> {
+  const { data, error } = await supabase
+    .from('cms_reviews')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('product_handle', productHandle)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (error) console.error('[CMS] getProductReviews error:', error)
+
+  const reviews = (data as Review[]) || []
+  const avgRating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0
+
+  return { reviews, avgRating, count: reviews.length }
+}

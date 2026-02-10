@@ -36,7 +36,15 @@
       "Bash(VARIANT=\"variant_01KG75H4D5PVFTMSXM9SBWRYQY\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: auto capture payment after cart completion\n\n- Add getMedusaAdminToken\\(\\) to get admin JWT token\n- Add capturePayment\\(\\) to automatically capture payment after order creation\n- Use MEDUSA_ADMIN_EMAIL and MEDUSA_ADMIN_PASSWORD env vars\n- Capture errors are non-blocking \\(logged only, won''t affect webhook response\\)\n- Update transaction status to ''captured'' on success\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY3Rvcl9pZCI6InVzZXJfMDFLRzRFR0FTOTVDVk04SktURkZQR1YwNlkiLCJhY3Rvcl90eXBlIjoidXNlciIsImF1dGhfaWRlbnRpdHlfaWQiOiJhdXRoaWRfMDFLRzRFR0I2RkI1RThDME00SEg5NDdNSkoiLCJhcHBfbWV0YWRhdGEiOnsidXNlcl9pZCI6InVzZXJfMDFLRzRFR0FTOTVDVk04SktURkZQR1YwNlkiLCJyb2xlcyI6W119LCJ1c2VyX21ldGFkYXRhIjp7fSwiaWF0IjoxNzcwNDA2NDE5LCJleHAiOjE3NzA0OTI4MTl9.GKgeMjJeOH6qf4XQrY6Rno2OWNu3JUG2ZkLaYexozGo\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY3Rvcl9pZCI6InVzZXJfMDFLRzRFR0FTOTVDVk04SktURkZQR1YwNlkiLCJhY3Rvcl90eXBlIjoidXNlciIsImF1dGhfaWRlbnRpdHlfaWQiOiJhdXRoaWRfMDFLRzRFR0I2RkI1RThDME00SEg5NDdNSkoiLCJhcHBfbWV0YWRhdGEiOnsidXNlcl9pZCI6InVzZXJfMDFLRzRFR0FTOTVDVk04SktURkZQR1YwNlkiLCJyb2xlcyI6W119LCJ1c2VyX21ldGFkYXRhIjp7fSwiaWF0IjoxNzcwNDA2NDE5LCJleHAiOjE3NzA0OTI4MTl9.GKgeMjJeOH6qf4XQrY6Rno2OWNu3JUG2ZkLaYexozGo\")",
+      "Bash(if [ -d \"node_modules/react-markdown\" ])",
+      "Bash(then echo \"✅ react-markdown 已安裝\")",
+      "Bash(else echo \"❌ react-markdown 未安裝，需執行: npm install react-markdown remark-gfm\")",
+      "Bash(fi)",
+      "Bash(if [ -d \"node_modules/remark-gfm\" ])",
+      "Bash(then echo \"✅ remark-gfm 已安裝\")",
+      "Bash(else echo \"❌ remark-gfm 未安裝，需執行: npm install react-markdown remark-gfm\")",
+      "Bash(ls:*)"
     ]
   }
 }
