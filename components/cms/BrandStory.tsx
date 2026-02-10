@@ -4,6 +4,7 @@ interface BrandStoryProps {
     title: string
     body: string
     image_url?: string
+    image?: string
     badges?: { icon: string; label: string }[]
   } | null
 }
@@ -41,8 +42,8 @@ export default function BrandStory({ data }: BrandStoryProps) {
         </div>
         <div className="h-80 md:h-96 rounded-2xl overflow-hidden"
           style={{ border: '1px solid rgba(212,175,55,0.15)' }}>
-          {data.image_url && !data.image_url.includes('placeholder') ? (
-            <img src={data.image_url} alt={data.title} className="w-full h-full object-cover" />
+          {(data.image_url || data.image) && !(data.image_url || data.image || '').includes('placeholder') ? (
+            <img src={data.image_url || data.image} alt={data.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-sm"
               style={{ background: 'linear-gradient(135deg, #1a1a1a, #111)', color: 'rgba(255,255,255,0.3)' }}>

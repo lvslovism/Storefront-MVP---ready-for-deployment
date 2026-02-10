@@ -95,8 +95,8 @@ export default async function AboutPage() {
               </div>
               <div className="h-80 md:h-96 rounded-2xl overflow-hidden"
                 style={{ border: '1px solid rgba(212,175,55,0.15)' }}>
-                {hero.image_url && !hero.image_url.includes('placeholder') ? (
-                  <img src={hero.image_url} alt="MINJIE STUDIO 品牌形象" className="w-full h-full object-cover" />
+                {(hero.image_url || hero.image) && !(hero.image_url || hero.image || '').includes('placeholder') ? (
+                  <img src={hero.image_url || hero.image} alt="MINJIE STUDIO 品牌形象" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-sm"
                     style={{
