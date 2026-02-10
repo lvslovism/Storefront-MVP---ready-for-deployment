@@ -15,6 +15,7 @@ type PolicyType = typeof VALID_TYPES[number];
 
 const baseUrl = 'https://shop.minjie0326.com';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 export function generateStaticParams() {

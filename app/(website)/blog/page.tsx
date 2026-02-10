@@ -10,6 +10,7 @@ import type { Metadata } from 'next';
 
 const baseUrl = 'https://shop.minjie0326.com';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export const metadata: Metadata = {
