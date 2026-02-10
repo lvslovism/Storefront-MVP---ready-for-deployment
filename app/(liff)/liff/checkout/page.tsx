@@ -43,7 +43,7 @@ export default function LiffCheckout() {
   // 結帳狀態
   const [submitting, setSubmitting] = useState(false);
 
-  // ===== 初始化 LIFF =====
+  // ===== 初始化 LIFF（優化版：省掉 verify API call） =====
   useEffect(() => {
     initLiff();
   }, []);
@@ -64,26 +64,13 @@ export default function LiffCheckout() {
         return;
       }
 
-      // 驗證身份
-      const accessToken = liff.getAccessToken();
-      const verifyRes = await fetch('/api/liff/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken }),
-      });
+      // 直接從 LIFF SDK 取用戶資料（不需要額外 API call）
+      const profile = await liff.getProfile();
+      setLineUserId(profile.userId);
+      setDisplayName(profile.displayName);
 
-      if (!verifyRes.ok) {
-        setError('身份驗證失敗');
-        setLoading(false);
-        return;
-      }
-
-      const { lineUserId: userId, displayName: name } = await verifyRes.json();
-      setLineUserId(userId);
-      setDisplayName(name);
-
-      // 載入購物車
-      await loadCart(userId);
+      // 直接載入購物車（省掉 verify API call）
+      await loadCart(profile.userId);
 
     } catch (e) {
       console.error('LIFF init error:', e);
@@ -164,13 +151,23 @@ export default function LiffCheckout() {
     }
   }
 
-  // ===== Loading 畫面 =====
+  // ===== Loading 骨架屏 =====
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-[#D4AF37]">載入中...</p>
+      <div className="pb-24">
+        <div className="sticky top-0 z-10 bg-[#0a0a0a] border-b border-[rgba(212,175,55,0.2)] px-4 py-3">
+          <h1 className="text-lg font-medium tracking-wider text-[#D4AF37]">MINJIE STUDIO</h1>
+        </div>
+        <div className="px-4 py-4 space-y-4">
+          <div className="h-6 w-32 bg-[#111111] rounded animate-pulse" />
+          <div className="h-24 bg-[#111111] rounded-xl animate-pulse" />
+          <div className="h-24 bg-[#111111] rounded-xl animate-pulse" />
+          <div className="h-2 bg-[#111111]" />
+          <div className="h-6 w-24 bg-[#111111] rounded animate-pulse" />
+          <div className="h-12 bg-[#111111] rounded-xl animate-pulse" />
+          <div className="h-12 bg-[#111111] rounded-xl animate-pulse" />
+          <div className="h-12 bg-[#111111] rounded-xl animate-pulse" />
+          <div className="h-12 bg-[#111111] rounded-xl animate-pulse" />
         </div>
       </div>
     );
