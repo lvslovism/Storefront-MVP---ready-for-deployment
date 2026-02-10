@@ -41,18 +41,32 @@ export default async function BlogPage() {
 
   return (
     <>
-      {/* JSON-LD */}
+      {/* JSON-LD: CollectionPage + BreadcrumbList */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: '首頁', item: baseUrl },
-              { '@type': 'ListItem', position: 2, name: '保健知識', item: `${baseUrl}/blog` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              '@context': 'https://schema.org',
+              '@type': 'CollectionPage',
+              name: '保健知識',
+              description: '益生菌怎麼選？膠原蛋白何時吃？MINJIE STUDIO 保健知識專欄',
+              url: `${baseUrl}/blog`,
+              isPartOf: {
+                '@type': 'WebSite',
+                name: 'MINJIE STUDIO',
+                url: baseUrl,
+              },
+            },
+            {
+              '@context': 'https://schema.org',
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: '首頁', item: baseUrl },
+                { '@type': 'ListItem', position: 2, name: '保健知識', item: `${baseUrl}/blog` },
+              ],
+            },
+          ]),
         }}
       />
 
