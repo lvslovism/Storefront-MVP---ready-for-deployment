@@ -183,9 +183,11 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Orders API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch orders' },
-      { status: 500 }
-    );
+    // 錯誤時也回傳空陣列，不中斷前端顯示
+    return NextResponse.json({
+      success: true,
+      orders: [],
+      error: 'Failed to fetch orders',
+    });
   }
 }

@@ -90,19 +90,27 @@ export async function POST(request: NextRequest) {
         ? await sendVerificationEmail(email, otp, user.name)
         : await sendPasswordResetEmail(email, otp, user.name);
 
-    if (!emailResult.success) {
-      console.error('[ResendOTP] Email 發送失敗:', emailResult.error);
-      return NextResponse.json(
-        { success: false, error: '驗證碼發送失敗，請稍後再試' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
+    // 組裝回應
+    const response: {
+      success: boolean;
+      message: string;
+      email: string;
+      devCode?: string;
+      devMessage?: string;
+    } = {
       success: true,
       message: '驗證碼已發送至您的信箱',
       email: email.toLowerCase(),
-    });
+    };
+
+    if (!emailResult.success) {
+      console.error('[ResendOTP] Email 發送失敗:', emailResult.error);
+      // 開發階段 fallback：回傳驗證碼讓前端顯示
+      response.devCode = otp;
+      response.devMessage = '寄信服務設定中，驗證碼暫時顯示於此';
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('[ResendOTP] Error:', error);
     return NextResponse.json(

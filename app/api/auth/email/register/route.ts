@@ -75,13 +75,26 @@ export async function POST(request: NextRequest) {
           expires_at: expiresAt,
         });
 
-        await sendVerificationEmail(email, otp, existingUser.name);
+        const emailResult = await sendVerificationEmail(email, otp, existingUser.name);
 
-        return NextResponse.json({
+        const response: {
+          success: boolean;
+          message: string;
+          email: string;
+          devCode?: string;
+          devMessage?: string;
+        } = {
           success: true,
           message: '驗證碼已重新發送至您的信箱',
           email: email.toLowerCase(),
-        });
+        };
+
+        if (!emailResult.success) {
+          response.devCode = otp;
+          response.devMessage = '寄信服務設定中，驗證碼暫時顯示於此';
+        }
+
+        return NextResponse.json(response);
       }
     }
 
@@ -120,17 +133,29 @@ export async function POST(request: NextRequest) {
 
     const emailResult = await sendVerificationEmail(email, otp, name);
 
-    if (!emailResult.success) {
-      console.error('[Register] Email 發送失敗:', emailResult.error);
-      // 即使 email 發送失敗，帳號已建立，讓用戶可以重新發送
-    }
-
-    return NextResponse.json({
+    // 組裝回應
+    const response: {
+      success: boolean;
+      message: string;
+      email: string;
+      hasLinkedLine: boolean;
+      devCode?: string;
+      devMessage?: string;
+    } = {
       success: true,
       message: '驗證碼已發送至您的信箱',
       email: email.toLowerCase(),
-      hasLinkedLine: !!lineProfile, // 告知前端有關聯的 LINE 帳號
-    });
+      hasLinkedLine: !!lineProfile,
+    };
+
+    if (!emailResult.success) {
+      console.error('[Register] Email 發送失敗:', emailResult.error);
+      // 開發階段 fallback：回傳驗證碼讓前端顯示
+      response.devCode = otp;
+      response.devMessage = '寄信服務設定中，驗證碼暫時顯示於此';
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('[Register] Error:', error);
     return NextResponse.json(

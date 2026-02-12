@@ -357,7 +357,7 @@ export interface MemberTier {
   id: string;
   customer_id: string;
   merchant_code: string;
-  tier_level: 'normal' | 'silver' | 'gold' | 'vip';
+  tier_level: string; // 從 tier_config 表動態取得
   tier_points: number;
   total_orders: number;
   total_spent: number;
@@ -469,6 +469,12 @@ export async function initMemberWallet(customerId: string): Promise<MemberWallet
     .single();
 
   if (error) {
+    // 處理 duplicate key error（race condition）
+    if (error.code === '23505') {
+      // 已存在，重新查詢返回
+      const retryExisting = await getMemberWallet(customerId);
+      if (retryExisting) return retryExisting;
+    }
     console.error('[Supabase] initMemberWallet error:', error);
     return null;
   }
@@ -483,13 +489,24 @@ export async function initMemberTier(customerId: string): Promise<MemberTier | n
   const existing = await getMemberTier(customerId);
   if (existing) return existing;
 
+  // 查詢 tier_config 取得最低等級
+  const { data: tierConfigs } = await getSupabase()
+    .from('tier_config')
+    .select('tier_level')
+    .eq('merchant_code', merchantCode)
+    .order('min_spent', { ascending: true })
+    .limit(1);
+
+  // 使用查到的最低等級，如果查不到則嘗試常見的值
+  const lowestTierLevel = tierConfigs?.[0]?.tier_level || 'bronze';
+
   // 建立新等級
   const { data, error } = await getSupabase()
     .from('member_tier')
     .insert({
       customer_id: customerId,
       merchant_code: merchantCode,
-      tier_level: 'normal',
+      tier_level: lowestTierLevel,
       tier_points: 0,
       total_orders: 0,
       total_spent: 0,
@@ -499,6 +516,11 @@ export async function initMemberTier(customerId: string): Promise<MemberTier | n
     .single();
 
   if (error) {
+    // 處理 duplicate key error（race condition）
+    if (error.code === '23505') {
+      const retryExisting = await getMemberTier(customerId);
+      if (retryExisting) return retryExisting;
+    }
     console.error('[Supabase] initMemberTier error:', error);
     return null;
   }

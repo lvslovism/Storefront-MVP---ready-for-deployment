@@ -355,7 +355,13 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
         showToast(data.error || '發送失敗，請稍後再試', 'error');
         return;
       }
-      showToast(`驗證碼已寄送至 ${email}`, 'success');
+      // 開發模式：如果有 devCode，自動填入
+      if (data.devCode) {
+        setOtp(data.devCode);
+        showToast(`驗證碼：${data.devCode}（${data.devMessage}）`, 'info');
+      } else {
+        showToast(`驗證碼已寄送至 ${email}`, 'success');
+      }
       setCountdown(60);
     } catch {
       showToast('發送失敗，請稍後再試', 'error');
@@ -383,9 +389,15 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
         return;
       }
       setMode('verify-email');
-      setOtp('');
       setCountdown(60);
-      showToast(`驗證碼已寄送至 ${email}`, 'success');
+      // 開發模式：如果有 devCode，自動填入
+      if (data.devCode) {
+        setOtp(data.devCode);
+        showToast(`驗證碼：${data.devCode}（${data.devMessage}）`, 'info');
+      } else {
+        setOtp('');
+        showToast(`驗證碼已寄送至 ${email}`, 'success');
+      }
     } catch {
       showToast('註冊失敗，請稍後再試', 'error');
     }
