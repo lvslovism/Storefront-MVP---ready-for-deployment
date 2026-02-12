@@ -29,6 +29,7 @@ interface LineSession {
   picture_url: string | null;
   customer_id: string | null;
   linked_at: string;
+  auth_method: 'line' | 'email';
 }
 
 export async function GET(request: NextRequest) {
@@ -168,6 +169,7 @@ export async function GET(request: NextRequest) {
       picture_url: profile.pictureUrl || null,
       customer_id: customerId,
       linked_at: new Date().toISOString(),
+      auth_method: 'line',
     };
 
     cookieStore.set('line_session', JSON.stringify(session), {

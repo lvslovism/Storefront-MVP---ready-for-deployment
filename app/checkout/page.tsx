@@ -584,6 +584,36 @@ export default function CheckoutPage() {
       setIsSubmitting(true);
       setError(null);
 
+      // [Fix] 主動管理 FULL2000：結帳前確保折扣狀態正確
+      // 這可防止 Medusa complete cart 時自動套用 automatic promotion
+      if (subtotal >= AUTO_DISCOUNT_CONFIG.threshold) {
+        // 滿 $2000，主動套用 FULL2000
+        const hasPromo = cart.promotions?.some(p => p.code === AUTO_DISCOUNT_CONFIG.code);
+        if (!hasPromo) {
+          await fetch(config.medusa.backendUrl + '/store/carts/' + cart.id + '/promotions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-publishable-api-key': config.medusa.publishableKey,
+            },
+            body: JSON.stringify({ promo_codes: [AUTO_DISCOUNT_CONFIG.code] }),
+          });
+        }
+      } else {
+        // 未滿 $2000，確保移除 FULL2000
+        const hasPromo = cart.promotions?.some(p => p.code === AUTO_DISCOUNT_CONFIG.code);
+        if (hasPromo) {
+          await fetch(config.medusa.backendUrl + '/store/carts/' + cart.id + '/promotions', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-publishable-api-key': config.medusa.publishableKey,
+            },
+            body: JSON.stringify({ promo_codes: [AUTO_DISCOUNT_CONFIG.code] }),
+          });
+        }
+      }
+
       // 1. 初始化 Medusa Payment Collection（讓 cart 可以被 complete）
       // 同時更新 cart 的顧客資料
       console.log('[Checkout] Initializing payment for cart:', cart.id);
@@ -612,7 +642,7 @@ export default function CheckoutPage() {
       }
 
       // 貨到付款：不走 ECPay，直接 complete cart
-      if (paymentMethod === 'cod') {
+if (paymentMethod === 'cod') {
         try {
           const completeRes = await fetch(
             `${config.medusa.backendUrl}/store/carts/${cart.id}/complete`,
@@ -626,6 +656,54 @@ export default function CheckoutPage() {
           );
           if (completeRes.ok) {
             localStorage.removeItem('medusa_cart_id');
+
+            // [v2.0] 寫入 order_extensions（fire-and-forget + 重試）
+            const extBody = {
+              cart_id: cart.id,
+              shipping_method: shippingMethod,
+              shipping_fee: shippingFee,
+              payment_method: 'cod',
+              credits_used: creditsToUse,
+              ...(promoApplied && {
+                promo_code: promoApplied.code,
+                promo_discount: promoApplied.discount,
+              }),
+              receiver_name: formData.name,
+              receiver_phone: formData.phone,
+              receiver_email: formData.email || undefined,
+              ...(shippingMethod === 'cvs' && cvsSelection && {
+                cvs_type: formData.cvsType,
+                cvs_store_id: cvsSelection.store_id,
+                cvs_store_name: cvsSelection.store_name,
+                cvs_address: cvsSelection.address,
+              }),
+              ...(shippingMethod === 'home' && {
+                receiver_address: formData.address,
+                receiver_city: formData.city,
+                receiver_zip_code: formData.zipCode,
+              }),
+            };
+
+            const writeExtension = async (retries = 2) => {
+              for (let i = 0; i <= retries; i++) {
+                try {
+                  const res = await fetch('/api/order-extension', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(extBody),
+                  });
+                  if (res.ok) {
+                    console.log('[COD] order_extensions written');
+                    return;
+                  }
+                } catch (e) {
+                  console.warn(`[COD] order_extensions write attempt ${i + 1} failed`);
+                }
+                if (i < retries) await new Promise(r => setTimeout(r, 1500));
+              }
+            };
+            writeExtension(); // 不 await，不阻擋跳轉
+
             window.location.href = `/checkout/complete?cart_id=${cart.id}&payment_method=cod`;
             return;
           } else {

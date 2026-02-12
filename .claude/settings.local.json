@@ -44,7 +44,8 @@
       "Bash(if [ -d \"node_modules/remark-gfm\" ])",
       "Bash(then echo \"✅ remark-gfm 已安裝\")",
       "Bash(else echo \"❌ remark-gfm 未安裝，需執行: npm install react-markdown remark-gfm\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(find:*)"
     ]
   }
 }

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { config } from '@/lib/config';
 import { useCart } from '@/components/CartProvider';
 import CartDrawer from '@/components/CartDrawer';
-import LineLoginButton from '@/components/LineLoginButton';
+import UserMenu from '@/components/website/UserMenu';
 
 export default function WebsiteHeader() {
   const { itemCount } = useCart();
@@ -74,7 +74,7 @@ export default function WebsiteHeader() {
             {/* 右側：LINE 登入 + 購物車 + 漢堡選單 */}
             <div className="flex items-center gap-3">
               {/* LINE 登入 */}
-              <LineLoginButton />
+              <UserMenu />
 
               {/* 購物車按鈕 */}
               {config.features.cart && (

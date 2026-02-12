@@ -99,6 +99,44 @@ async function fetchOrderById(orderId: string, token: string): Promise<any | nul
   }
 }
 
+/**
+ * 透過 Supabase order_cart 表查 cart_id 對應的 order_id
+ * 此表由 order-extension API 或 order-notify webhook 寫入
+ * 主要用於 COD 訂單（沒有 gateway_transactions 紀錄）
+ */
+async function findOrderIdByOrderCart(cartId: string): Promise<string | null> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('[OrderAPI] Supabase not configured, skipping order_cart lookup');
+    return null;
+  }
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/order_cart?cart_id=eq.${encodeURIComponent(cartId)}&select=order_id&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('[OrderAPI] order_cart query failed:', response.status);
+      return null;
+    }
+
+    const rows = await response.json();
+    if (rows.length > 0 && rows[0].order_id) {
+      console.log('[OrderAPI] Found order_id via order_cart:', rows[0].order_id);
+      return rows[0].order_id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[OrderAPI] order_cart lookup error:', error);
+    return null;
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ cartId: string }> }
@@ -115,12 +153,21 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to authenticate with Medusa' }, { status: 500 });
     }
 
-    // === 策略 1：透過 Supabase gateway_transactions 精確匹配 ===
+    // === 策略 1：透過 Supabase gateway_transactions 精確匹配（線上付款）===
     const medusaOrderId = await findOrderIdByCartId(cartId);
     if (medusaOrderId) {
       const order = await fetchOrderById(medusaOrderId, token);
       if (order) {
         return NextResponse.json({ order, matched_by: 'gateway_transaction' });
+      }
+    }
+
+    // === 策略 1.5：透過 order_cart 表查找（COD 訂單）===
+    const orderIdFromCart = await findOrderIdByOrderCart(cartId);
+    if (orderIdFromCart) {
+      const order = await fetchOrderById(orderIdFromCart, token);
+      if (order) {
+        return NextResponse.json({ order, matched_by: 'order_cart' });
       }
     }
 
