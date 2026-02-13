@@ -132,8 +132,10 @@ export default function CartProvider({ children }: { children: ReactNode }) {
 
         if (quantity <= 0) {
           // 數量為 0 則移除
-          const { cart: updatedCart } = await removeCartItemApi(cart.id, itemId);
-          setCart(updatedCart);
+          await removeCartItemApi(cart.id, itemId);
+          // Medusa v2 DELETE response may not include complete cart, refresh to get accurate state
+          const { cart: refreshedCart } = await getCart(cart.id);
+          setCart(refreshedCart);
         } else {
           const { cart: updatedCart } = await updateCartItemApi(cart.id, itemId, quantity);
           setCart(updatedCart);
@@ -157,8 +159,10 @@ export default function CartProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         setError(null);
-        const { cart: updatedCart } = await removeCartItemApi(cart.id, itemId);
-        setCart(updatedCart);
+        await removeCartItemApi(cart.id, itemId);
+        // Medusa v2 DELETE response may not include complete cart, refresh to get accurate state
+        const { cart: refreshedCart } = await getCart(cart.id);
+        setCart(refreshedCart);
       } catch (err) {
         console.error('Failed to remove item:', err);
         setError('移除失敗');

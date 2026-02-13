@@ -70,7 +70,11 @@ export async function POST(request: NextRequest) {
       expires_at: expiresAt,
     });
 
-    const emailResult = await sendPasswordResetEmail(email, otp, user.name);
+    // 生成重設密碼連結
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.minjie0326.com';
+    const resetLink = `${baseUrl}/reset-password?email=${encodeURIComponent(email.toLowerCase())}&code=${encodeURIComponent(otp)}`;
+
+    const emailResult = await sendPasswordResetEmail(email, otp, user.name, resetLink);
 
     // 組裝回應
     const response: {

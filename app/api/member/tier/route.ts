@@ -28,16 +28,32 @@ export async function GET() {
     // ===== 取得會員等級 =====
     let tier = await getMemberTier(session.customer_id);
 
-    // 如果還沒有等級記錄，初始化一個
+    // 如果還沒有等級記錄，嘗試初始化一個
     if (!tier) {
       tier = await initMemberTier(session.customer_id);
     }
 
+    // 如果還是沒有（可能是 tier_config 不存在），回傳預設值（最低等級為 silver）
     if (!tier) {
-      return NextResponse.json(
-        { success: false, error: '無法取得等級資料' },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        success: true,
+        tier: {
+          level: 'silver',
+          name: '白銀會員',
+          points: 0,
+          totalOrders: 0,
+          totalSpent: 0,
+          discountRate: 0,
+          upgradedAt: null,
+          expiresAt: null,
+        },
+        currentConfig: null,
+        nextTier: null,
+        progress: {
+          percentage: 0,
+          amountToNextTier: 0,
+        },
+      });
     }
 
     // ===== 取得等級設定 =====
@@ -73,12 +89,14 @@ export async function GET() {
       amountToNextTier = Math.max(0, nextMin - spent);
     }
 
-    // 等級中文名稱對照
+    // 等級中文名稱對照（六級制）
     const tierNames: Record<string, string> = {
-      normal: '一般會員',
-      silver: '銀卡會員',
-      gold: '金卡會員',
-      vip: 'VIP 會員',
+      silver: '白銀會員',
+      gold: '黃金會員',
+      platinum: '鉑金會員',
+      diamond: '鑽石會員',
+      elite: '頂級會員',
+      throne: '王座會員',
     };
 
     return NextResponse.json({

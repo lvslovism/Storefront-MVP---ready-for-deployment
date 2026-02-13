@@ -310,3 +310,105 @@ export async function getProductReviews(productHandle: string): Promise<{
 
   return { reviews, avgRating, count: reviews.length }
 }
+
+// ============ 首頁圖片區塊 API ============
+
+export interface CmsBanner {
+  id: string;
+  placement: string;
+  title: string | null;
+  image_url: string;
+  image_mobile_url: string | null;
+  link_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+/**
+ * 取得指定 placement 的 Banner（單筆）
+ * 用於首頁圖片區塊
+ */
+export async function getBannerByPlacement(
+  placement: string,
+  merchantCode: string = MERCHANT
+): Promise<CmsBanner | null> {
+  const now = new Date().toISOString();
+
+  const { data, error } = await getSupabase()
+    .from('cms_banners')
+    .select('*')
+    .eq('merchant_code', merchantCode)
+    .eq('placement', placement)
+    .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+    .order('sort_order', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+  return data as CmsBanner;
+}
+
+/**
+ * 取得指定 placement 的所有 Banner（多筆，輪播用）
+ */
+export async function getBannersByPlacement(
+  placement: string,
+  merchantCode: string = MERCHANT
+): Promise<CmsBanner[]> {
+  const now = new Date().toISOString();
+
+  const { data, error } = await getSupabase()
+    .from('cms_banners')
+    .select('*')
+    .eq('merchant_code', merchantCode)
+    .eq('placement', placement)
+    .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+    .order('sort_order', { ascending: true });
+
+  if (error || !data) return [];
+  return data as CmsBanner[];
+}
+
+/**
+ * 批量取得多個 placement 的 Banner（首頁一次撈完，減少 DB 請求）
+ */
+export async function getHomeBanners(
+  merchantCode: string = MERCHANT
+): Promise<Record<string, CmsBanner | null>> {
+  const placements = [
+    'hero_brand',
+    'membership_table',
+    'spring_promo',
+    'installment_info',
+    'shopping_flow',
+    'community_cta'
+  ];
+
+  const now = new Date().toISOString();
+
+  const { data, error } = await getSupabase()
+    .from('cms_banners')
+    .select('*')
+    .eq('merchant_code', merchantCode)
+    .in('placement', placements)
+    .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+    .order('sort_order', { ascending: true });
+
+  if (error || !data) {
+    // 回傳空 map
+    return Object.fromEntries(placements.map(p => [p, null]));
+  }
+
+  // 每個 placement 取第一筆（sort_order 最小的）
+  const result: Record<string, CmsBanner | null> = {};
+  for (const p of placements) {
+    result[p] = (data as CmsBanner[]).find(b => b.placement === p) || null;
+  }
+  return result;
+}

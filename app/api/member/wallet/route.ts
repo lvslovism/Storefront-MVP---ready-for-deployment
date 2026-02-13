@@ -41,11 +41,17 @@ export async function GET(request: NextRequest) {
       wallet = await initMemberWallet(session.customer_id);
     }
 
+    // 如果還是沒有，回傳預設值
     if (!wallet) {
-      return NextResponse.json(
-        { success: false, error: '無法取得錢包資料' },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        success: true,
+        wallet: {
+          balance: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+        },
+        transactions: [],
+      });
     }
 
     // ===== 取得交易紀錄 =====

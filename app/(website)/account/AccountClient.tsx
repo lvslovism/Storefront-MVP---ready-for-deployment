@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import type { Session } from '@/lib/auth';
+import { useCart } from '@/components/CartProvider';
 
 // ─── Constants ───
 const GOLD = '#D4AF37';
@@ -51,8 +52,8 @@ interface Transaction {
 
 // ─── Fallback Data (used when API fails or data not available) ───
 const FALLBACK_TIER: TierData = {
-  level: 'normal',
-  name: '一般會員',
+  level: 'silver',
+  name: '白銀會員',
   points: 0,
   totalOrders: 0,
   totalSpent: 0,
@@ -63,31 +64,37 @@ const FALLBACK_TIER: TierData = {
 
 const FALLBACK_WALLET: WalletData = { balance: 0, totalEarned: 0, totalSpent: 0 };
 
-// 等級顏色和圖標
+// 等級顏色和圖標（六級制）
 const TIER_VISUALS: Record<string, { color: string; icon: string }> = {
-  normal: { color: '#888', icon: '☆' },
   silver: { color: '#C0C0C0', icon: '✦' },
   gold: { color: GOLD, icon: '★' },
-  vip: { color: '#E8C4FF', icon: '♛' },
+  platinum: { color: '#E5E4E2', icon: '◆' },
+  diamond: { color: '#B9F2FF', icon: '💎' },
+  elite: { color: '#FF6B6B', icon: '🔥' },
+  throne: { color: '#FFD700', icon: '👑' },
 };
 
-// ─── Mock Data for features not yet API-connected ───
-const MOCK_USER = {
-  email: null as string | null,
-  phone: '',
-  birthday: '',
-  preferred_shipping: null as 'cvs' | 'home' | null,
-};
+// ─── Address & CVS Store Types ───
+interface Address {
+  id: string;
+  label: string;
+  name: string;
+  phone: string;
+  zip_code: string;
+  city: string;
+  district: string;
+  address: string;
+  is_default: boolean;
+}
 
-const MOCK_ADDRESSES = [
-  { id: 'addr_1', label: '住家', name: '林小美', phone: '0912-345-678', zip: '106', city: '台北市', district: '大安區', address: '忠孝東路四段 100 號 5 樓', is_default: true },
-  { id: 'addr_2', label: '公司', name: '林小美', phone: '0912-345-678', zip: '110', city: '台北市', district: '信義區', address: '松仁路 50 號 12 樓', is_default: false },
-];
-
-const MOCK_CVS_STORES = [
-  { id: 'cvs_1', type: 'UNIMARTC2C', store_id: '131386', store_name: '統一超商 忠孝門市', address: '台北市大安區忠孝東路四段 120 號', is_default: true },
-  { id: 'cvs_2', type: 'FAMIC2C', store_id: '007543', store_name: '全家 信義莊敬店', address: '台北市信義區莊敬路 178 號', is_default: false },
-];
+interface CvsStore {
+  id: string;
+  cvs_type: 'UNIMARTC2C' | 'FAMIC2C' | 'HILIFEC2C';
+  store_id: string;
+  store_name: string;
+  address: string;
+  is_default: boolean;
+}
 
 // Orders interface for API data
 interface OrderItem {
@@ -96,6 +103,21 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   thumbnail?: string | null;
+  variant_id?: string | null;
+}
+
+// Profile data from API
+interface ProfileData {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  birthday: string | null;
+  picture_url: string | null;
+  auth_method: 'line' | 'email';
+  line_connected: boolean;
+  email_connected: boolean;
+  customer_id: string | null;
 }
 
 interface Order {
@@ -196,9 +218,11 @@ interface OrdersTabProps {
   orders: Order[];
   loading: boolean;
   showToast: (msg: string) => void;
+  onReorder: (order: Order) => Promise<void>;
+  reordering: boolean;
 }
 
-function OrdersTab({ orders, loading, showToast }: OrdersTabProps) {
+function OrdersTab({ orders, loading, showToast, onReorder, reordering }: OrdersTabProps) {
   const statusMap: Record<string, { label: string; color: string }> = {
     pending: { label: '處理中', color: '#F59E0B' },
     shipped: { label: '已出貨', color: '#3B82F6' },
@@ -206,11 +230,6 @@ function OrdersTab({ orders, loading, showToast }: OrdersTabProps) {
     cancelled: { label: '已取消', color: '#EF4444' },
   };
   const paymentMap: Record<string, string> = { credit_card: '信用卡', cod: '貨到付款', pending: '待付款', refunded: '已退款' };
-
-  const handleReorder = (order: Order) => {
-    const itemNames = order.items.map((i) => i.title).join('、');
-    showToast(`已將「${itemNames}」加入購物車`);
-  };
 
   if (loading) {
     return (
@@ -290,11 +309,14 @@ function OrdersTab({ orders, loading, showToast }: OrdersTabProps) {
 
             {/* Reorder */}
             <div className="mt-3.5 pt-3.5 border-t border-white/5 flex justify-between items-center">
-              <button className="bg-transparent border-none text-white/30 text-xs cursor-pointer p-0 hover:text-white/50">
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="bg-transparent border-none text-white/30 text-xs cursor-pointer p-0 hover:text-white/50 no-underline"
+              >
                 查看詳情 →
-              </button>
-              <SmallButton onClick={() => handleReorder(order)} variant="green">
-                🔄 再買一次
+              </Link>
+              <SmallButton onClick={() => onReorder(order)} variant="green">
+                {reordering ? '加入中...' : '🔄 再買一次'}
               </SmallButton>
             </div>
           </div>
@@ -573,37 +595,407 @@ function WalletTab({ wallet, transactions }: WalletTabProps) {
   );
 }
 
-// ─── Tab: Profile ───
+// ─── Modal Component ───
+function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md rounded-2xl p-6"
+        style={{ background: BG_CARD, border: `1px solid ${GOLD}30` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-semibold text-white/90">{title}</h3>
+          <button onClick={onClose} className="text-white/40 hover:text-white/70 text-xl bg-transparent border-none cursor-pointer">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; session: Session }) {
-  const [name, setName] = useState(session.display_name || '');
-  const [phone, setPhone] = useState(MOCK_USER.phone);
-  const [birthday, setBirthday] = useState(MOCK_USER.birthday);
-  const [preferredShipping, setPreferredShipping] = useState<'cvs' | 'home' | null>(MOCK_USER.preferred_shipping);
-  const userEmail = (session as { email?: string }).email || MOCK_USER.email;
-  const [addresses, setAddresses] = useState(MOCK_ADDRESSES);
-  const [cvsStores, setCvsStores] = useState(MOCK_CVS_STORES);
+// ─── Tab: Profile ───
+interface ProfileTabProps {
+  showToast: (msg: string) => void;
+  session: Session;
+  addresses: Address[];
+  setAddresses: (addresses: Address[]) => void;
+  cvsStores: CvsStore[];
+  setCvsStores: (stores: CvsStore[]) => void;
+  preferredShipping: 'cvs' | 'home' | null;
+  setPreferredShipping: (pref: 'cvs' | 'home' | null) => void;
+  profileData: ProfileData | null;
+  onProfileUpdate: () => void;
+}
+
+function ProfileTab({ showToast, session, addresses, setAddresses, cvsStores, setCvsStores, preferredShipping, setPreferredShipping, profileData, onProfileUpdate }: ProfileTabProps) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [savingBirthday, setSavingBirthday] = useState(false);
+  const [birthdayLocked, setBirthdayLocked] = useState(false);
+  // Track original values to detect changes
+  const [originalName, setOriginalName] = useState('');
+  const [originalPhone, setOriginalPhone] = useState('');
+
+  // Email 綁定 Modal 狀態
+  const [emailBindModal, setEmailBindModal] = useState(false);
+  const [bindEmail, setBindEmail] = useState('');
+  const [bindOtp, setBindOtp] = useState(['', '', '', '', '', '']);
+  const [bindStep, setBindStep] = useState<1 | 2>(1);
+  const [bindLoading, setBindLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // 從 profileData 初始化表單
+  useEffect(() => {
+    if (profileData) {
+      setName(profileData.name || '');
+      setOriginalName(profileData.name || '');
+      setPhone(profileData.phone || '');
+      setOriginalPhone(profileData.phone || '');
+      setBirthday(profileData.birthday || '');
+      setBirthdayLocked(!!profileData.birthday);
+    }
+  }, [profileData]);
+
+  const userEmail = profileData?.email || null;
+
+  // Modal states
+  const [addressModal, setAddressModal] = useState<{ open: boolean; editing: Address | null }>({ open: false, editing: null });
+
+  // Address form
+  const [addrForm, setAddrForm] = useState({ label: '', name: '', phone: '', zip_code: '', city: '', district: '', address: '', is_default: false });
 
   const cvsTypeNames: Record<string, string> = { UNIMARTC2C: '7-ELEVEN', FAMIC2C: '全家', HILIFEC2C: '萊爾富' };
-
   const inputClass = "w-full px-3.5 py-3 bg-white/[0.02] border border-white/10 rounded-lg text-white/90 text-[15px] outline-none transition-colors focus:border-[#D4AF3750]";
   const labelClass = "block text-xs tracking-wider mb-2 uppercase text-white/45";
 
+  // Handle preference change
+  const handlePreferenceChange = async (pref: 'cvs' | 'home') => {
+    setPreferredShipping(pref);
+    try {
+      const res = await fetch('/api/member/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferred_shipping: pref }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      showToast('已更新配送偏好');
+    } catch {
+      showToast('更新失敗，請稍後再試');
+    }
+  };
+
+  // Open address modal
+  const openAddressModal = (addr?: Address) => {
+    if (addr) {
+      setAddrForm({ label: addr.label, name: addr.name, phone: addr.phone, zip_code: addr.zip_code, city: addr.city, district: addr.district, address: addr.address, is_default: addr.is_default });
+      setAddressModal({ open: true, editing: addr });
+    } else {
+      setAddrForm({ label: '', name: '', phone: '', zip_code: '', city: '', district: '', address: '', is_default: false });
+      setAddressModal({ open: true, editing: null });
+    }
+  };
+
+  // Save address
+  const saveAddress = async () => {
+    if (!addrForm.label || !addrForm.name || !addrForm.phone || !addrForm.city || !addrForm.district || !addrForm.address) {
+      showToast('請填寫完整資料');
+      return;
+    }
+    try {
+      const method = addressModal.editing ? 'PUT' : 'POST';
+      const body = addressModal.editing ? { ...addrForm, id: addressModal.editing.id } : addrForm;
+      const res = await fetch('/api/member/addresses', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      // Refresh addresses
+      const listRes = await fetch('/api/member/addresses');
+      const listData = await listRes.json();
+      if (listData.success) setAddresses(listData.addresses);
+
+      setAddressModal({ open: false, editing: null });
+      showToast(addressModal.editing ? '地址已更新' : '地址已新增');
+    } catch {
+      showToast('儲存失敗，請稍後再試');
+    }
+  };
+
+  // Delete address
+  const deleteAddress = async (id: string) => {
+    try {
+      const res = await fetch('/api/member/addresses', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setAddresses(addresses.filter((a) => a.id !== id));
+      showToast('已刪除地址');
+    } catch {
+      showToast('刪除失敗');
+    }
+  };
+
+  // Set default CVS
+  const setDefaultCvs = async (id: string) => {
+    try {
+      const res = await fetch('/api/member/cvs-stores', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      const listRes = await fetch('/api/member/cvs-stores');
+      const listData = await listRes.json();
+      if (listData.success) setCvsStores(listData.stores);
+      showToast('已設為預設門市');
+    } catch {
+      showToast('設定失敗');
+    }
+  };
+
+  // Delete CVS store
+  const deleteCvsStore = async (id: string) => {
+    try {
+      const res = await fetch('/api/member/cvs-stores', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setCvsStores(cvsStores.filter((s) => s.id !== id));
+      showToast('已刪除門市');
+    } catch {
+      showToast('刪除失敗');
+    }
+  };
+
+  // 儲存姓名
+  const handleSaveName = async () => {
+    if (!name.trim()) {
+      showToast('請輸入姓名');
+      return;
+    }
+    if (name.trim() === originalName) return; // No change
+    setSavingName(true);
+    try {
+      const res = await fetch('/api/member/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      showToast('姓名已更新');
+      setOriginalName(name.trim());
+      onProfileUpdate();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '更新失敗，請稍後再試');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  // 儲存手機
+  const handleSavePhone = async () => {
+    if (phone.trim() === originalPhone) return; // No change
+    setSavingPhone(true);
+    try {
+      const res = await fetch('/api/member/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      showToast('手機號碼已更新');
+      setOriginalPhone(phone.trim());
+      onProfileUpdate();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '更新失敗，請稍後再試');
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
+  // 儲存生日（選擇後立即儲存）
+  const handleSaveBirthday = async (newBirthday: string) => {
+    if (!newBirthday || birthdayLocked) return;
+    setSavingBirthday(true);
+    try {
+      const res = await fetch('/api/member/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birthday: newBirthday }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      showToast('生日已設定');
+      setBirthdayLocked(true);
+      onProfileUpdate();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '設定失敗，請稍後再試');
+      setBirthday(''); // Reset on error
+    } finally {
+      setSavingBirthday(false);
+    }
+  };
+
+  // Email 綁定 - 發送驗證碼
+  const handleSendBindCode = async () => {
+    if (!bindEmail.trim()) {
+      showToast('請輸入 Email');
+      return;
+    }
+    setBindLoading(true);
+    setDevCode(null);
+    try {
+      const res = await fetch('/api/auth/email/bind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: bindEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      if (data.devCode) {
+        setDevCode(data.devCode);
+      }
+      setBindStep(2);
+      showToast('驗證碼已發送');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '發送失敗，請稍後再試');
+    } finally {
+      setBindLoading(false);
+    }
+  };
+
+  // Email 綁定 - OTP 輸入處理
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) value = value[0];
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...bindOtp];
+    newOtp[index] = value;
+    setBindOtp(newOtp);
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !bindOtp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Email 綁定 - 驗證並綁定
+  const handleVerifyBind = async () => {
+    const code = bindOtp.join('');
+    if (code.length !== 6) {
+      showToast('請輸入完整驗證碼');
+      return;
+    }
+    setBindLoading(true);
+    try {
+      const res = await fetch('/api/auth/email/bind-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: bindEmail.trim(), code }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      showToast('Email 綁定成功');
+      setEmailBindModal(false);
+      setBindEmail('');
+      setBindOtp(['', '', '', '', '', '']);
+      setBindStep(1);
+      setDevCode(null);
+      onProfileUpdate();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '綁定失敗，請稍後再試');
+    } finally {
+      setBindLoading(false);
+    }
+  };
+
+  // 關閉 Email 綁定 Modal
+  const closeEmailBindModal = () => {
+    setEmailBindModal(false);
+    setBindEmail('');
+    setBindOtp(['', '', '', '', '', '']);
+    setBindStep(1);
+    setDevCode(null);
+  };
+
   return (
     <div>
+      {/* Address Modal */}
+      <Modal isOpen={addressModal.open} onClose={() => setAddressModal({ open: false, editing: null })} title={addressModal.editing ? '編輯地址' : '新增地址'}>
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>標籤</label>
+              <input value={addrForm.label} onChange={(e) => setAddrForm({ ...addrForm, label: e.target.value })} placeholder="例：住家" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>收件人</label>
+              <input value={addrForm.name} onChange={(e) => setAddrForm({ ...addrForm, name: e.target.value })} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>電話</label>
+            <input value={addrForm.phone} onChange={(e) => setAddrForm({ ...addrForm, phone: e.target.value })} type="tel" className={inputClass} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelClass}>郵遞區號</label>
+              <input value={addrForm.zip_code} onChange={(e) => setAddrForm({ ...addrForm, zip_code: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>縣市</label>
+              <input value={addrForm.city} onChange={(e) => setAddrForm({ ...addrForm, city: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>區域</label>
+              <input value={addrForm.district} onChange={(e) => setAddrForm({ ...addrForm, district: e.target.value })} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>詳細地址</label>
+            <input value={addrForm.address} onChange={(e) => setAddrForm({ ...addrForm, address: e.target.value })} className={inputClass} />
+          </div>
+          <label className="flex items-center gap-2 text-white/60 text-sm cursor-pointer">
+            <input type="checkbox" checked={addrForm.is_default} onChange={(e) => setAddrForm({ ...addrForm, is_default: e.target.checked })} className="w-4 h-4" />
+            設為預設地址
+          </label>
+          <div className="flex gap-3 mt-2">
+            <button onClick={() => setAddressModal({ open: false, editing: null })} className="flex-1 py-3 rounded-lg border border-white/10 bg-transparent text-white/60 cursor-pointer">取消</button>
+            <button onClick={saveAddress} className="flex-1 py-3 rounded-lg border-none text-[#0A0A0A] font-semibold cursor-pointer" style={{ background: GOLD }}>儲存</button>
+          </div>
+        </div>
+      </Modal>
+
+
       {/* LINE Binding */}
       {session.line_user_id && (
-        <div
-          className="rounded-xl px-5 py-4 mb-6 flex items-center justify-between"
-          style={{ background: 'rgba(6,199,85,0.06)', border: '1px solid rgba(6,199,85,0.15)' }}
-        >
+        <div className="rounded-xl px-5 py-4 mb-6 flex items-center justify-between" style={{ background: 'rgba(6,199,85,0.06)', border: '1px solid rgba(6,199,85,0.15)' }}>
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-xl text-white font-bold"
-              style={{ background: LINE_GREEN }}
-            >
-              L
-            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl text-white font-bold" style={{ background: LINE_GREEN }}>L</div>
             <div>
               <div className="text-white/80 text-sm font-medium">{session.display_name}</div>
               <div className="text-white/35 text-xs">LINE 帳號已綁定</div>
@@ -618,29 +1010,82 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
       <div className="flex flex-col gap-5 mb-8">
         <div>
           <label className={labelClass} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>姓名</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        </div>
-        <div>
-          <label className={labelClass} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>電子信箱</label>
-          <div className="px-3.5 py-3 bg-white/[0.03] border border-white/[0.06] rounded-lg text-white/40 text-[15px] flex justify-between">
-            {userEmail || '尚未綁定'}
-            <span className="text-[11px] text-white/25">不可修改</span>
+          <div className="flex gap-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} className={`flex-1 ${inputClass}`} />
+            {name.trim() !== originalName && (
+              <button
+                onClick={handleSaveName}
+                disabled={savingName}
+                className="px-4 py-2 rounded-lg border-none text-sm font-semibold cursor-pointer whitespace-nowrap transition-opacity"
+                style={{ background: GOLD, color: '#0A0A0A', opacity: savingName ? 0.6 : 1 }}
+              >
+                {savingName ? '...' : '儲存'}
+              </button>
+            )}
           </div>
         </div>
         <div>
+          <label className={labelClass} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>電子信箱</label>
+          {userEmail ? (
+            <div className="px-3.5 py-3 bg-white/[0.03] border border-white/[0.06] rounded-lg text-white/40 text-[15px] flex justify-between">
+              {userEmail}
+              <span className="text-[11px] text-white/25">不可修改</span>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="flex-1 px-3.5 py-3 bg-white/[0.03] border border-white/[0.06] rounded-lg text-white/30 text-[15px]">
+                尚未綁定
+              </div>
+              <button
+                onClick={() => setEmailBindModal(true)}
+                className="px-4 py-3 rounded-lg border-none text-sm font-semibold cursor-pointer whitespace-nowrap"
+                style={{ background: GOLD, color: '#0A0A0A' }}
+              >
+                綁定 Email
+              </button>
+            </div>
+          )}
+        </div>
+        <div>
           <label className={labelClass} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>手機號碼</label>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" className={inputClass} />
+          <div className="flex gap-2">
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" className={`flex-1 ${inputClass}`} />
+            {phone.trim() !== originalPhone && (
+              <button
+                onClick={handleSavePhone}
+                disabled={savingPhone}
+                className="px-4 py-2 rounded-lg border-none text-sm font-semibold cursor-pointer whitespace-nowrap transition-opacity"
+                style={{ background: GOLD, color: '#0A0A0A', opacity: savingPhone ? 0.6 : 1 }}
+              >
+                {savingPhone ? '...' : '儲存'}
+              </button>
+            )}
+          </div>
         </div>
         <div>
           <label className={labelClass} style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>生日</label>
-          <input
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-            type="date"
-            className={inputClass}
-            style={{ colorScheme: 'dark' }}
-          />
-          <p className="text-white/25 text-[11px] mt-1.5">生日設定後無法修改，用於發放生日禮金</p>
+          <div className="flex gap-2 items-center">
+            <input
+              value={birthday}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setBirthday(newValue);
+                if (newValue && !birthdayLocked) {
+                  handleSaveBirthday(newValue);
+                }
+              }}
+              type="date"
+              className={`flex-1 ${inputClass}`}
+              style={{ colorScheme: 'dark', opacity: birthdayLocked ? 0.5 : 1 }}
+              disabled={birthdayLocked || savingBirthday}
+            />
+            {savingBirthday && (
+              <span className="text-sm" style={{ color: GOLD }}>儲存中...</span>
+            )}
+          </div>
+          <p className="text-white/25 text-[11px] mt-1.5">
+            {birthdayLocked ? '生日已設定，無法修改' : '生日設定後無法修改，用於發放生日禮金'}
+          </p>
         </div>
       </div>
 
@@ -654,28 +1099,11 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
         ].map((m) => {
           const isActive = preferredShipping === m.key;
           return (
-            <button
-              key={m.key}
-              onClick={() => setPreferredShipping(m.key)}
-              className="p-4 rounded-xl border-none cursor-pointer text-left transition-all"
-              style={{
-                background: isActive ? `${GOLD}10` : 'rgba(255,255,255,0.02)',
-                outline: `2px solid ${isActive ? `${GOLD}50` : 'rgba(255,255,255,0.06)'}`,
-              }}
-            >
+            <button key={m.key} onClick={() => handlePreferenceChange(m.key)} className="p-4 rounded-xl border-none cursor-pointer text-left transition-all" style={{ background: isActive ? `${GOLD}10` : 'rgba(255,255,255,0.02)', outline: `2px solid ${isActive ? `${GOLD}50` : 'rgba(255,255,255,0.06)'}` }}>
               <div className="text-2xl mb-2">{m.icon}</div>
-              <div className="text-sm font-semibold mb-1" style={{ color: isActive ? GOLD : 'rgba(255,255,255,0.7)' }}>
-                {m.label}
-              </div>
+              <div className="text-sm font-semibold mb-1" style={{ color: isActive ? GOLD : 'rgba(255,255,255,0.7)' }}>{m.label}</div>
               <div className="text-white/30 text-[11px]">{m.desc}</div>
-              {isActive && (
-                <div
-                  className="mt-2 text-[10px] font-semibold inline-block px-2 py-0.5 rounded"
-                  style={{ color: GOLD, background: `${GOLD}15` }}
-                >
-                  已選擇
-                </div>
-              )}
+              {isActive && <div className="mt-2 text-[10px] font-semibold inline-block px-2 py-0.5 rounded" style={{ color: GOLD, background: `${GOLD}15` }}>已選擇</div>}
             </button>
           );
         })}
@@ -684,7 +1112,7 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
       {/* Saved Addresses */}
       <div className="flex justify-between items-center mb-3.5">
         <SectionTitle>常用宅配地址</SectionTitle>
-        <SmallButton onClick={() => showToast('功能開發中')}>+ 新增地址</SmallButton>
+        <SmallButton onClick={() => openAddressModal()}>+ 新增地址</SmallButton>
       </div>
       {addresses.length === 0 ? (
         <div className="py-8 px-5 text-center rounded-xl border border-dashed border-white/10 mb-8">
@@ -694,44 +1122,19 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
       ) : (
         <div className="flex flex-col gap-2.5 mb-8">
           {addresses.map((addr) => (
-            <div
-              key={addr.id}
-              className="rounded-xl px-4 py-4"
-              style={{
-                background: BG_CARD2,
-                border: `1px solid ${addr.is_default ? `${GOLD}25` : 'rgba(255,255,255,0.06)'}`,
-              }}
-            >
+            <div key={addr.id} className="rounded-xl px-4 py-4" style={{ background: BG_CARD2, border: `1px solid ${addr.is_default ? `${GOLD}25` : 'rgba(255,255,255,0.06)'}` }}>
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <span
-                    className="text-[11px] px-2 py-0.5 rounded font-medium"
-                    style={{
-                      background: addr.is_default ? `${GOLD}15` : 'rgba(255,255,255,0.04)',
-                      color: addr.is_default ? GOLD : 'rgba(255,255,255,0.4)',
-                    }}
-                  >
-                    {addr.label}
-                  </span>
+                  <span className="text-[11px] px-2 py-0.5 rounded font-medium" style={{ background: addr.is_default ? `${GOLD}15` : 'rgba(255,255,255,0.04)', color: addr.is_default ? GOLD : 'rgba(255,255,255,0.4)' }}>{addr.label}</span>
                   {addr.is_default && <span className="text-[10px] font-medium" style={{ color: GOLD }}>預設</span>}
                 </div>
                 <div className="flex gap-1.5">
-                  <SmallButton variant="ghost" onClick={() => showToast('功能開發中')}>編輯</SmallButton>
-                  <SmallButton
-                    variant="red"
-                    onClick={() => {
-                      setAddresses(addresses.filter((a) => a.id !== addr.id));
-                      showToast('已刪除地址');
-                    }}
-                  >
-                    刪除
-                  </SmallButton>
+                  <SmallButton variant="ghost" onClick={() => openAddressModal(addr)}>編輯</SmallButton>
+                  <SmallButton variant="red" onClick={() => deleteAddress(addr.id)}>刪除</SmallButton>
                 </div>
               </div>
               <div className="text-white/70 text-sm mb-1">{addr.name}　{addr.phone}</div>
-              <div className="text-white/40 text-[13px]">
-                {addr.zip} {addr.city}{addr.district}{addr.address}
-              </div>
+              <div className="text-white/40 text-[13px]">{addr.zip_code} {addr.city}{addr.district}{addr.address}</div>
             </div>
           ))}
         </div>
@@ -740,7 +1143,7 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
       {/* Saved CVS Stores */}
       <div className="flex justify-between items-center mb-3.5">
         <SectionTitle>常用超商門市</SectionTitle>
-        <SmallButton onClick={() => showToast('選擇門市功能將串接 ECPay 門市地圖')}>+ 新增門市</SmallButton>
+        <span className="text-[11px] text-white/30">結帳時自動儲存</span>
       </div>
       {cvsStores.length === 0 ? (
         <div className="py-8 px-5 text-center rounded-xl border border-dashed border-white/10 mb-8">
@@ -755,75 +1158,101 @@ function ProfileTab({ showToast, session }: { showToast: (msg: string) => void; 
               FAMIC2C: { bg: 'rgba(0,125,0,0.1)', color: '#007D00' },
               HILIFEC2C: { bg: 'rgba(255,165,0,0.1)', color: '#FF8C00' },
             };
-            const tc = typeColors[store.type] || typeColors.UNIMARTC2C;
-
+            const tc = typeColors[store.cvs_type] || typeColors.UNIMARTC2C;
             return (
-              <div
-                key={store.id}
-                className="rounded-xl px-4 py-4"
-                style={{
-                  background: BG_CARD2,
-                  border: `1px solid ${store.is_default ? `${GOLD}25` : 'rgba(255,255,255,0.06)'}`,
-                }}
-              >
+              <div key={store.id} className="rounded-xl px-4 py-4" style={{ background: BG_CARD2, border: `1px solid ${store.is_default ? `${GOLD}25` : 'rgba(255,255,255,0.06)'}` }}>
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="text-[11px] px-2 py-0.5 rounded font-semibold"
-                      style={{ background: tc.bg, color: tc.color }}
-                    >
-                      {cvsTypeNames[store.type]}
-                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded font-semibold" style={{ background: tc.bg, color: tc.color }}>{cvsTypeNames[store.cvs_type]}</span>
                     {store.is_default && <span className="text-[10px] font-medium" style={{ color: GOLD }}>預設</span>}
                   </div>
                   <div className="flex gap-1.5">
-                    {!store.is_default && (
-                      <SmallButton
-                        variant="gold"
-                        onClick={() => {
-                          setCvsStores(cvsStores.map((s) => ({ ...s, is_default: s.id === store.id })));
-                          showToast('已設為預設門市');
-                        }}
-                      >
-                        設為預設
-                      </SmallButton>
-                    )}
-                    <SmallButton
-                      variant="red"
-                      onClick={() => {
-                        setCvsStores(cvsStores.filter((s) => s.id !== store.id));
-                        showToast('已刪除門市');
-                      }}
-                    >
-                      刪除
-                    </SmallButton>
+                    {!store.is_default && <SmallButton variant="gold" onClick={() => setDefaultCvs(store.id)}>設為預設</SmallButton>}
+                    <SmallButton variant="red" onClick={() => deleteCvsStore(store.id)}>刪除</SmallButton>
                   </div>
                 </div>
                 <div className="text-white/70 text-sm mb-1">{store.store_name}</div>
-                <div className="text-white/40 text-xs">門市代號 {store.store_id}　·　{store.address}</div>
+                <div className="text-white/40 text-xs">門市代號 {store.store_id}{store.address && `　·　${store.address}`}</div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Save Button */}
-      <button
-        onClick={() => showToast('個人資料已更新')}
-        className="w-full py-3.5 mt-2 border-none rounded-[10px] text-[15px] font-bold cursor-pointer tracking-wide transition-all hover:-translate-y-0.5"
-        style={{
-          background: `linear-gradient(135deg, ${GOLD_DARK}, ${GOLD}, ${GOLD_LIGHT})`,
-          color: '#0A0A0A',
-        }}
-      >
-        儲存變更
-      </button>
+      {/* Email Bind Modal */}
+      <Modal isOpen={emailBindModal} onClose={closeEmailBindModal} title="綁定 Email">
+        {bindStep === 1 ? (
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>Email</label>
+              <input
+                value={bindEmail}
+                onChange={(e) => setBindEmail(e.target.value)}
+                type="email"
+                placeholder="請輸入您的 Email"
+                className={inputClass}
+              />
+            </div>
+            <button
+              onClick={handleSendBindCode}
+              disabled={bindLoading}
+              className="w-full py-3 rounded-lg border-none text-[15px] font-semibold cursor-pointer"
+              style={{ background: GOLD, color: '#0A0A0A', opacity: bindLoading ? 0.6 : 1 }}
+            >
+              {bindLoading ? '發送中...' : '發送驗證碼'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-white/60 text-sm">驗證碼已發送至 {bindEmail}</p>
+            {devCode && (
+              <div className="px-3 py-2 rounded-lg text-sm" style={{ background: 'rgba(212,175,55,0.1)', color: GOLD }}>
+                開發模式驗證碼: {devCode}
+              </div>
+            )}
+            <div className="flex justify-center gap-2">
+              {bindOtp.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { otpInputRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  className="w-11 h-14 text-center text-xl font-bold rounded-lg outline-none transition-colors"
+                  style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: `2px solid ${digit ? GOLD : 'rgba(255,255,255,0.1)'}`,
+                    color: 'white',
+                  }}
+                />
+              ))}
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => { setBindStep(1); setBindOtp(['', '', '', '', '', '']); setDevCode(null); }}
+                className="flex-1 py-3 rounded-lg border border-white/10 bg-transparent text-white/60 cursor-pointer"
+              >
+                返回
+              </button>
+              <button
+                onClick={handleVerifyBind}
+                disabled={bindLoading}
+                className="flex-1 py-3 rounded-lg border-none font-semibold cursor-pointer"
+                style={{ background: GOLD, color: '#0A0A0A', opacity: bindLoading ? 0.6 : 1 }}
+              >
+                {bindLoading ? '驗證中...' : '確認綁定'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Delete Account */}
       <div className="mt-10 pt-6 border-t border-white/[0.06]">
-        <button className="bg-transparent border-none text-white/25 text-[13px] cursor-pointer hover:text-red-500 transition-colors">
-          刪除帳號
-        </button>
+        <button className="bg-transparent border-none text-white/25 text-[13px] cursor-pointer hover:text-red-500 transition-colors">刪除帳號</button>
       </div>
     </div>
   );
@@ -838,18 +1267,24 @@ const TABS = [
   { key: 'profile', label: '個人資料', icon: '👤' },
 ];
 
-// Default tier configs (used when API doesn't return any)
+// Default tier configs (used when API doesn't return any) - 六級制
 const DEFAULT_TIER_CONFIGS: TierConfigItem[] = [
-  { level: 'normal', name: '一般會員', minSpent: 0, pointsMultiplier: 1.0, birthdayPoints: 50, monthlyCredits: 0 },
-  { level: 'silver', name: '白銀會員', minSpent: 5000, pointsMultiplier: 1.5, birthdayPoints: 100, monthlyCredits: 50 },
-  { level: 'gold', name: '黃金會員', minSpent: 20000, pointsMultiplier: 2.0, birthdayPoints: 200, monthlyCredits: 100 },
-  { level: 'vip', name: 'VIP 會員', minSpent: 50000, pointsMultiplier: 3.0, birthdayPoints: 500, monthlyCredits: 200 },
+  { level: 'silver', name: '白銀會員', minSpent: 0, pointsMultiplier: 1.0, birthdayPoints: 100, monthlyCredits: 0 },
+  { level: 'gold', name: '黃金會員', minSpent: 6888, pointsMultiplier: 1.5, birthdayPoints: 200, monthlyCredits: 100 },
+  { level: 'platinum', name: '鉑金會員', minSpent: 16888, pointsMultiplier: 2.0, birthdayPoints: 400, monthlyCredits: 150 },
+  { level: 'diamond', name: '鑽石會員', minSpent: 38888, pointsMultiplier: 2.5, birthdayPoints: 800, monthlyCredits: 220 },
+  { level: 'elite', name: '頂級會員', minSpent: 68888, pointsMultiplier: 3.0, birthdayPoints: 1500, monthlyCredits: 380 },
+  { level: 'throne', name: '王座會員', minSpent: 128888, pointsMultiplier: 4.0, birthdayPoints: 2000, monthlyCredits: 450 },
 ];
 
 export default function AccountClient({ session }: AccountClientProps) {
   const [activeTab, setActiveTab] = useState('orders');
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // 購物車
+  const { addItem, refreshCart } = useCart();
+  const [reordering, setReordering] = useState(false);
 
   // API Data States
   const [tierData, setTierData] = useState<TierData>(FALLBACK_TIER);
@@ -866,6 +1301,12 @@ export default function AccountClient({ session }: AccountClientProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
+  // Profile states
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [cvsStores, setCvsStores] = useState<CvsStore[]>([]);
+  const [preferredShipping, setPreferredShipping] = useState<'cvs' | 'home' | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+
   // Fetch member data on mount
   useEffect(() => {
     setMounted(true);
@@ -880,9 +1321,7 @@ export default function AccountClient({ session }: AccountClientProps) {
           setNextTierConfig(data.nextTier);
           setTierProgress(data.progress?.percentage || 0);
           setAmountToNextTier(data.progress?.amountToNextTier || 0);
-          // Build allConfigs from API data or use defaults
           if (data.currentConfig) {
-            // We only get current and next from API, use defaults for full list
             setAllTierConfigs(DEFAULT_TIER_CONFIGS);
           }
         }
@@ -917,7 +1356,84 @@ export default function AccountClient({ session }: AccountClientProps) {
         console.error('Failed to fetch orders:', err);
         setOrdersLoading(false);
       });
+
+    // Fetch addresses
+    fetch('/api/member/addresses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setAddresses(data.addresses || []);
+      })
+      .catch((err) => console.error('Failed to fetch addresses:', err));
+
+    // Fetch CVS stores
+    fetch('/api/member/cvs-stores')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setCvsStores(data.stores || []);
+      })
+      .catch((err) => console.error('Failed to fetch CVS stores:', err));
+
+    // Fetch preferences
+    fetch('/api/member/preferences')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.preferences) {
+          setPreferredShipping(data.preferences.preferred_shipping);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch preferences:', err));
+
+    // Fetch profile data
+    fetchProfile();
   }, []);
+
+  // Profile fetch function
+  const fetchProfile = () => {
+    fetch('/api/member/profile')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.profile) {
+          setProfileData(data.profile);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch profile:', err));
+  };
+
+  // 再買一次 - 加入購物車
+  const handleReorder = async (order: Order) => {
+    const itemsWithVariant = order.items.filter((item) => item.variant_id);
+    if (itemsWithVariant.length === 0) {
+      showToast('此訂單商品無法再次購買');
+      return;
+    }
+
+    setReordering(true);
+    try {
+      let addedCount = 0;
+      for (const item of itemsWithVariant) {
+        if (item.variant_id) {
+          try {
+            await addItem(item.variant_id, item.quantity || 1);
+            addedCount++;
+          } catch (err) {
+            console.error('Failed to add item:', item.title, err);
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        showToast(`已將 ${addedCount} 件商品加入購物車`);
+        await refreshCart();
+      } else {
+        showToast('加入購物車失敗，商品可能已下架');
+      }
+    } catch (err) {
+      console.error('Reorder failed:', err);
+      showToast('加入購物車失敗，請稍後再試');
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -1018,7 +1534,15 @@ export default function AccountClient({ session }: AccountClientProps) {
 
         {/* Tab Content */}
         <div key={activeTab} style={{ animation: 'fadeInUp 0.3s ease' }}>
-          {activeTab === 'orders' && <OrdersTab orders={orders} loading={ordersLoading} showToast={showToast} />}
+          {activeTab === 'orders' && (
+            <OrdersTab
+              orders={orders}
+              loading={ordersLoading}
+              showToast={showToast}
+              onReorder={handleReorder}
+              reordering={reordering}
+            />
+          )}
           {activeTab === 'tier' && (
             <TierTab
               tier={tierData}
@@ -1030,7 +1554,20 @@ export default function AccountClient({ session }: AccountClientProps) {
             />
           )}
           {activeTab === 'wallet' && <WalletTab wallet={walletData} transactions={transactions} />}
-          {activeTab === 'profile' && <ProfileTab showToast={showToast} session={session} />}
+          {activeTab === 'profile' && (
+            <ProfileTab
+              showToast={showToast}
+              session={session}
+              addresses={addresses}
+              setAddresses={setAddresses}
+              cvsStores={cvsStores}
+              setCvsStores={setCvsStores}
+              preferredShipping={preferredShipping}
+              setPreferredShipping={setPreferredShipping}
+              profileData={profileData}
+              onProfileUpdate={fetchProfile}
+            />
+          )}
         </div>
       </div>
     </div>

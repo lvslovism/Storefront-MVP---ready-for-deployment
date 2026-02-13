@@ -384,9 +384,9 @@ export async function getMemberWallet(customerId: string): Promise<MemberWallet 
     .select('*')
     .eq('customer_id', customerId)
     .eq('merchant_code', merchantCode)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('[Supabase] getMemberWallet error:', error);
   }
   return data as MemberWallet | null;
@@ -422,9 +422,9 @@ export async function getMemberTier(customerId: string): Promise<MemberTier | nu
     .select('*')
     .eq('customer_id', customerId)
     .eq('merchant_code', merchantCode)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('[Supabase] getMemberTier error:', error);
   }
   return data as MemberTier | null;
@@ -466,7 +466,7 @@ export async function initMemberWallet(customerId: string): Promise<MemberWallet
       total_spent: 0,
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     // 處理 duplicate key error（race condition）
@@ -497,8 +497,12 @@ export async function initMemberTier(customerId: string): Promise<MemberTier | n
     .order('min_spent', { ascending: true })
     .limit(1);
 
-  // 使用查到的最低等級，如果查不到則嘗試常見的值
-  const lowestTierLevel = tierConfigs?.[0]?.tier_level || 'bronze';
+  // 如果沒有 tier_config，不要嘗試 INSERT（會違反 check constraint）
+  const lowestTierLevel = tierConfigs?.[0]?.tier_level;
+  if (!lowestTierLevel) {
+    console.warn('[Supabase] initMemberTier: No tier_config found for merchant:', merchantCode);
+    return null;
+  }
 
   // 建立新等級
   const { data, error } = await getSupabase()
@@ -513,7 +517,7 @@ export async function initMemberTier(customerId: string): Promise<MemberTier | n
       discount_rate: 0,
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     // 處理 duplicate key error（race condition）

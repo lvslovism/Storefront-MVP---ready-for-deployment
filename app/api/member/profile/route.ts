@@ -29,6 +29,7 @@ export async function GET() {
       name: string;
       email: string | null;
       phone: string | null;
+      birthday: string | null;
       picture_url: string | null;
       auth_method: 'line' | 'email';
       line_connected: boolean;
@@ -58,6 +59,7 @@ export async function GET() {
         name: emailUser.name,
         email: emailUser.email,
         phone: emailUser.phone,
+        birthday: (emailUser as { birthday?: string | null }).birthday || null,
         picture_url: null,
         auth_method: 'email',
         line_connected: !!lineProfile,
@@ -75,6 +77,7 @@ export async function GET() {
         name: session.display_name,
         email: lineProfile?.email || null,
         phone: lineProfile?.phone || null,
+        birthday: (lineProfile as { birthday?: string | null } | null)?.birthday || null,
         picture_url: session.picture_url,
         auth_method: 'line',
         line_connected: true,
@@ -109,6 +112,7 @@ export async function GET() {
  * Request Body:
  * - name?: string
  * - phone?: string
+ * - birthday?: string (YYYY-MM-DD，設定後不可修改)
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -122,7 +126,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, phone } = body;
+    const { name, phone, birthday } = body;
 
     // ===== 驗證資料 =====
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
@@ -132,15 +136,44 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 驗證 birthday 格式
+    if (birthday !== undefined && birthday !== null) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(birthday)) {
+        return NextResponse.json(
+          { success: false, error: '生日格式錯誤' },
+          { status: 400 }
+        );
+      }
+    }
+
     const authMethod = session.auth_method || 'line';
 
     if (authMethod === 'email' && session.email_user_id) {
+      // 取得現有資料檢查 birthday 是否已設定
+      const { data: existingUser } = await getSupabase()
+        .from('email_users')
+        .select('birthday')
+        .eq('id', session.email_user_id)
+        .single();
+
       // 更新 email_users
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
       if (name !== undefined) updateData.name = name.trim();
       if (phone !== undefined) updateData.phone = phone || null;
+
+      // 生日只能設定一次
+      if (birthday !== undefined && birthday !== null) {
+        if (existingUser?.birthday) {
+          return NextResponse.json(
+            { success: false, error: '生日設定後無法修改' },
+            { status: 400 }
+          );
+        }
+        updateData.birthday = birthday;
+      }
 
       const { error } = await getSupabase()
         .from('email_users')
@@ -155,10 +188,29 @@ export async function PUT(request: NextRequest) {
         );
       }
     } else if (session.line_user_id && session.customer_id) {
+      // 取得現有資料檢查 birthday 是否已設定
+      const { data: existingProfile } = await getSupabase()
+        .from('customer_line_profiles')
+        .select('birthday')
+        .eq('customer_id', session.customer_id)
+        .eq('merchant_code', getMerchantCode())
+        .single();
+
       // 更新 customer_line_profiles
       const updateData: Record<string, unknown> = {};
       if (name !== undefined) updateData.display_name = name.trim();
       if (phone !== undefined) updateData.phone = phone || null;
+
+      // 生日只能設定一次
+      if (birthday !== undefined && birthday !== null) {
+        if (existingProfile?.birthday) {
+          return NextResponse.json(
+            { success: false, error: '生日設定後無法修改' },
+            { status: 400 }
+          );
+        }
+        updateData.birthday = birthday;
+      }
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await getSupabase()

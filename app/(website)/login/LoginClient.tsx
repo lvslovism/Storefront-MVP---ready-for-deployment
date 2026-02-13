@@ -235,7 +235,8 @@ function OTPInput({
   onChange: (value: string) => void;
 }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const digits = value.padEnd(6, '').split('').slice(0, 6);
+  // Always create exactly 6 digits, filling empty slots with ''
+  const digits = Array.from({ length: 6 }, (_, i) => value[i] || '');
 
   const handleKey = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace' && !digits[idx] && idx > 0) {
@@ -304,18 +305,21 @@ function OTPInput({
 
 // ─── Main Component ───
 export default function LoginClient({ redirectTo }: LoginClientProps) {
-  // modes: login | register | verify-email | forgot | reset-sent
-  const [mode, setMode] = useState<'login' | 'register' | 'verify-email' | 'forgot' | 'reset-sent'>('login');
+  // modes: login | register | verify-email | forgot | reset-password
+  const [mode, setMode] = useState<'login' | 'register' | 'verify-email' | 'forgot' | 'reset-password'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'success' | 'error' } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize component
   useEffect(() => {
@@ -461,6 +465,7 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
     if (!email) return showToast('請輸入電子信箱', 'error');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('信箱格式不正確', 'error');
 
+    setIsSubmitting(true);
     try {
       const res = await fetch('/api/auth/email/forgot-password', {
         method: 'POST',
@@ -472,9 +477,103 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
         showToast(data.error || '發送失敗，請稍後再試', 'error');
         return;
       }
-      setMode('reset-sent');
+      // 切換到輸入驗證碼+新密碼模式
+      setMode('reset-password');
+      setOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setCountdown(60);
+      // 開發模式：如果有 devCode，自動填入
+      if (data.devCode) {
+        setOtp(data.devCode);
+        showToast(`驗證碼：${data.devCode}（${data.devMessage}）`, 'info');
+      } else {
+        showToast(`驗證碼已寄送至 ${email}`, 'success');
+      }
     } catch {
       showToast('發送失敗，請稍後再試', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 重送重設密碼驗證碼
+  const handleResendResetCode = async () => {
+    if (countdown > 0) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/email/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || '發送失敗，請稍後再試', 'error');
+        return;
+      }
+      setCountdown(60);
+      if (data.devCode) {
+        setOtp(data.devCode);
+        showToast(`驗證碼：${data.devCode}（${data.devMessage}）`, 'info');
+      } else {
+        showToast('驗證碼已重新發送', 'success');
+      }
+    } catch {
+      showToast('發送失敗，請稍後再試', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 重設密碼
+  const handleResetPassword = async () => {
+    if (otp.length !== 6) return showToast('請輸入完整的 6 位驗證碼', 'error');
+    if (!newPassword || newPassword.length < 8) return showToast('密碼至少 8 個字元', 'error');
+    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      return showToast('密碼需包含英文和數字', 'error');
+    }
+    if (newPassword !== confirmNewPassword) return showToast('兩次密碼不一致', 'error');
+
+    setIsSubmitting(true);
+    try {
+      // 1. 重設密碼
+      const res = await fetch('/api/auth/email/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: otp, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || '重設失敗，請稍後再試', 'error');
+        return;
+      }
+
+      // 2. 自動登入
+      const loginRes = await fetch('/api/auth/email/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: newPassword }),
+      });
+      const loginData = await loginRes.json();
+
+      if (loginRes.ok && loginData.success) {
+        showToast('密碼已重設成功！', 'success');
+        setTimeout(() => {
+          window.location.href = redirectTo;
+        }, 1000);
+      } else {
+        // 登入失敗但密碼已重設，導向登入頁
+        showToast('密碼已重設，請重新登入', 'success');
+        setTimeout(() => {
+          setMode('login');
+          setPassword('');
+        }, 1500);
+      }
+    } catch {
+      showToast('重設失敗，請稍後再試', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -482,8 +581,8 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
     login: { main: '歡迎回來', sub: '登入您的會員帳號，享有專屬優惠' },
     register: { main: '加入會員', sub: '立即註冊，開啟您的健康旅程' },
     'verify-email': { main: '驗證信箱', sub: '我們已發送 6 位數驗證碼至' },
-    forgot: { main: '重設密碼', sub: '我們將寄送重設連結至您的信箱' },
-    'reset-sent': { main: '信件已寄出', sub: '請至信箱查收重設密碼連結' },
+    forgot: { main: '重設密碼', sub: '輸入您的信箱，我們將發送驗證碼' },
+    'reset-password': { main: '重設密碼', sub: '驗證碼已發送至' },
   };
 
   return (
@@ -570,14 +669,12 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
                 >
                   <span className="text-[22px]">✉</span>
                 </div>
-              ) : mode === 'reset-sent' ? (
+              ) : mode === 'reset-password' ? (
                 <div
                   className="absolute top-1 left-1 w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ border: `2px solid ${GOLD}`, animation: 'checkPop 0.4s ease' }}
+                  style={{ border: `2px solid ${GOLD}` }}
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 13L10 18L19 7" stroke={GOLD} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <span className="text-[22px]">🔑</span>
                 </div>
               ) : (
                 <>
@@ -604,7 +701,7 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
             </h1>
             <p className="text-white/40 text-sm mt-2 leading-relaxed">
               {titles[mode].sub}
-              {mode === 'verify-email' && (
+              {(mode === 'verify-email' || mode === 'reset-password') && (
                 <span className="block mt-1 font-semibold" style={{ color: GOLD }}>
                   {email}
                 </span>
@@ -675,32 +772,86 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
               </>
             )}
 
-            {/* ═══════ RESET SENT MODE ═══════ */}
-            {mode === 'reset-sent' && (
+            {/* ═══════ RESET PASSWORD MODE ═══════ */}
+            {mode === 'reset-password' && (
               <>
-                <div
-                  className="rounded-xl p-5 text-center mb-6"
-                  style={{ background: 'rgba(212,175,55,0.06)', border: `1px solid ${GOLD}20` }}
-                >
-                  <p className="text-white/60 text-sm m-0 leading-relaxed">
-                    重設密碼連結已寄送至
-                    <br />
-                    <span className="font-semibold" style={{ color: GOLD }}>
-                      {email}
-                    </span>
-                  </p>
-                  <p className="text-white/30 text-xs mt-3 mb-0">連結將於 30 分鐘內有效，請盡速操作</p>
+                <p className="text-white/50 text-sm text-center mb-5 leading-relaxed">
+                  請輸入信箱收到的 <span style={{ color: GOLD }}>6 位數驗證碼</span>
+                  <br />
+                  <span className="text-xs text-white/30">找不到信件？請檢查垃圾郵件匣</span>
+                </p>
+
+                <OTPInput value={otp} onChange={setOtp} />
+
+                <div className="text-center mb-6">
+                  {countdown > 0 ? (
+                    <span className="text-white/30 text-[13px]">{countdown} 秒後可重新發送</span>
+                  ) : (
+                    <button
+                      onClick={handleResendResetCode}
+                      disabled={isSubmitting}
+                      className="bg-transparent border-none text-[13px] cursor-pointer underline underline-offset-[3px]"
+                      style={{ color: GOLD }}
+                    >
+                      重新發送驗證碼
+                    </button>
+                  )}
                 </div>
+
+                <PasswordInput
+                  label="新密碼"
+                  placeholder="至少 8 個字元，包含英文和數字"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+
+                <PasswordInput
+                  label="確認新密碼"
+                  placeholder="再次輸入新密碼"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                />
+
+                <div
+                  className="rounded-[10px] p-3 px-4 mb-5 flex items-start gap-2.5"
+                  style={{ background: 'rgba(212,175,55,0.04)', border: `1px solid ${GOLD}15` }}
+                >
+                  <span className="text-base leading-none">🔐</span>
+                  <p className="text-white/40 text-xs m-0 leading-relaxed">
+                    密碼規則：至少 <span style={{ color: GOLD }}>8 個字元</span>，需包含<span style={{ color: GOLD }}>英文和數字</span>
+                  </p>
+                </div>
+
                 <button
-                  onClick={() => setMode('login')}
-                  className="w-full py-4 px-5 border-none rounded-[10px] text-base font-bold cursor-pointer tracking-wide"
+                  onClick={handleResetPassword}
+                  disabled={isSubmitting}
+                  className="w-full py-4 px-5 border-none rounded-[10px] text-base font-bold cursor-pointer tracking-wide transition-all duration-300"
                   style={{
-                    background: `linear-gradient(135deg, ${GOLD_DARK}, ${GOLD}, ${GOLD_LIGHT})`,
-                    color: '#0A0A0A',
+                    background:
+                      otp.length === 6 && newPassword.length >= 8
+                        ? `linear-gradient(135deg, ${GOLD_DARK}, ${GOLD}, ${GOLD_LIGHT})`
+                        : 'rgba(255,255,255,0.06)',
+                    color: otp.length === 6 && newPassword.length >= 8 ? '#0A0A0A' : 'rgba(255,255,255,0.25)',
+                    boxShadow: otp.length === 6 && newPassword.length >= 8 ? '0 4px 16px rgba(212,175,55,0.2)' : 'none',
+                    opacity: isSubmitting ? 0.6 : 1,
                   }}
                 >
-                  返回登入
+                  {isSubmitting ? '處理中...' : '重設密碼'}
                 </button>
+
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => {
+                      setMode('forgot');
+                      setOtp('');
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                    }}
+                    className="bg-transparent border-none text-[13px] cursor-pointer text-white/35 hover:text-gold transition-colors"
+                  >
+                    ← 修改信箱
+                  </button>
+                </div>
               </>
             )}
 
@@ -834,15 +985,17 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
 
                 <button
                   onClick={mode === 'login' ? handleLogin : mode === 'register' ? handleRegisterSubmit : handleForgot}
+                  disabled={isSubmitting}
                   className="w-full py-4 px-5 border-none rounded-[10px] text-base font-bold cursor-pointer tracking-wide transition-all duration-300 hover:-translate-y-0.5"
                   style={{
                     background: `linear-gradient(135deg, ${GOLD_DARK}, ${GOLD}, ${GOLD_LIGHT})`,
                     backgroundSize: '200% auto',
                     color: '#0A0A0A',
                     boxShadow: '0 4px 16px rgba(212,175,55,0.2)',
+                    opacity: isSubmitting ? 0.6 : 1,
                   }}
                 >
-                  {mode === 'login' ? '登入' : mode === 'register' ? '下一步：驗證信箱' : '發送重設連結'}
+                  {isSubmitting ? '處理中...' : mode === 'login' ? '登入' : mode === 'register' ? '下一步：驗證信箱' : '發送驗證碼'}
                 </button>
               </>
             )}

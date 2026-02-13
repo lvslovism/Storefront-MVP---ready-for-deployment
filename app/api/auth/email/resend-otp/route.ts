@@ -85,10 +85,15 @@ export async function POST(request: NextRequest) {
     });
 
     // 根據用途發送不同的 email
-    const emailResult =
-      purpose === 'register'
-        ? await sendVerificationEmail(email, otp, user.name)
-        : await sendPasswordResetEmail(email, otp, user.name);
+    let emailResult;
+    if (purpose === 'register') {
+      emailResult = await sendVerificationEmail(email, otp, user.name);
+    } else {
+      // 生成重設密碼連結
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.minjie0326.com';
+      const resetLink = `${baseUrl}/reset-password?email=${encodeURIComponent(email.toLowerCase())}&code=${encodeURIComponent(otp)}`;
+      emailResult = await sendPasswordResetEmail(email, otp, user.name, resetLink);
+    }
 
     // 組裝回應
     const response: {

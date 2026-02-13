@@ -128,6 +128,17 @@ export default function CheckoutPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [chaileaseLoading, setChaileaseLoading] = useState(false);
 
+  // 會員偏好資料（用於自動帶入和避免重複儲存）
+  const [memberDataLoaded, setMemberDataLoaded] = useState(false);
+  const [existingCvsStoreIds, setExistingCvsStoreIds] = useState<Set<string>>(new Set());
+  const [existingAddressKeys, setExistingAddressKeys] = useState<Set<string>>(new Set());
+  const [memberCvsStores, setMemberCvsStores] = useState<any[]>([]);
+  const [memberAddresses, setMemberAddresses] = useState<any[]>([]);
+  const [showAllAddresses, setShowAllAddresses] = useState(false);
+  const [showAllCvsStores, setShowAllCvsStores] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedCvsStoreId, setSelectedCvsStoreId] = useState<string | null>(null);
+
   // 折扣碼
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
@@ -249,6 +260,131 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
+  // 會員登入後：載入偏好設定並自動帶入
+  useEffect(() => {
+    if (!isLineLoggedIn || memberDataLoaded) return;
+    setMemberDataLoaded(true);
+
+    // 同時 fetch 所有會員資料
+    Promise.all([
+      fetch('/api/member/preferences').then(r => r.json()).catch(() => ({ success: false })),
+      fetch('/api/member/addresses').then(r => r.json()).catch(() => ({ success: false })),
+      fetch('/api/member/cvs-stores').then(r => r.json()).catch(() => ({ success: false })),
+      fetch('/api/member/profile').then(r => r.json()).catch(() => ({ success: false })),
+    ]).then(([prefsRes, addrsRes, storesRes, profileRes]) => {
+      // 檢查是否有 sessionStorage 還原的資料（代表使用者從超商地圖返回）
+      const hasRestoredData = sessionStorage.getItem(STORAGE_KEYS.FORM_DATA) !== null;
+
+      // 1. 自動選擇偏好配送方式（只在沒有 sessionStorage 資料時）
+      if (!hasRestoredData && prefsRes.success && prefsRes.preferences?.preferred_shipping) {
+        setShippingMethod(prefsRes.preferences.preferred_shipping);
+      }
+
+      // 2. 儲存已有的超商門市 ID（用於避免重複儲存）
+      // 如果有預設門市，自動切換到該超商類型
+      if (storesRes.success && storesRes.stores) {
+        setMemberCvsStores(storesRes.stores);
+        setExistingCvsStoreIds(new Set(storesRes.stores.map((s: any) => s.store_id)));
+
+        // 找到預設門市，自動切到對應的超商類型
+        const defaultStore = storesRes.stores.find((s: any) => s.is_default);
+        if (defaultStore && !hasRestoredData) {
+          // 設定超商類型為預設門市的類型
+          setFormData(prev => ({ ...prev, cvsType: defaultStore.cvs_type as CvsType }));
+          // 自動選中該門市
+          setSelectedCvsStoreId(defaultStore.id);
+          setCvsSelection({
+            temp_trade_no: 'member_saved',
+            store_id: defaultStore.store_id,
+            store_name: defaultStore.store_name,
+            address: defaultStore.address,
+          });
+        }
+      }
+
+      // 3. 儲存已有的地址（用於避免重複儲存和顯示選擇列表）
+      if (addrsRes.success && addrsRes.addresses) {
+        setMemberAddresses(addrsRes.addresses);
+        // 用 name + phone + address 組合作為 key
+        const keys = new Set<string>(
+          addrsRes.addresses.map((a: any) => `${a.name}|${a.phone}|${a.address}`)
+        );
+        setExistingAddressKeys(keys);
+      }
+
+      // 4. 自動帶入預設地址（只填空欄位）並標記為選中
+      if (addrsRes.success && addrsRes.addresses?.length > 0) {
+        const defaultAddr = addrsRes.addresses.find((a: any) => a.is_default) || addrsRes.addresses[0];
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id);
+          setFormData(prev => ({
+            ...prev,
+            name: prev.name || defaultAddr.name || '',
+            phone: prev.phone || defaultAddr.phone || '',
+            zipCode: prev.zipCode || defaultAddr.zip_code || '',
+            city: prev.city || defaultAddr.city || '',
+            address: prev.address || `${defaultAddr.district || ''}${defaultAddr.address || ''}`,
+          }));
+        }
+      }
+
+      // 5. 自動帶入會員 profile（只填空欄位）
+      if (profileRes.success && profileRes.profile) {
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || profileRes.profile.name || '',
+          phone: prev.phone || profileRes.profile.phone || '',
+          email: prev.email || profileRes.profile.email || '',
+        }));
+      }
+    });
+  }, [isLineLoggedIn, memberDataLoaded]);
+
+  // 切換超商類型時，自動帶入該類型的預設門市（只有當沒有選中門市時才執行）
+  useEffect(() => {
+    // 如果已經有選中的門市，且該門市類型與當前選擇一致，就不需要重新選
+    if (cvsSelection && memberCvsStores.some(s => s.store_id === cvsSelection.store_id && s.cvs_type === formData.cvsType)) {
+      return;
+    }
+    // 如果已經有選中的門市但類型不同，清除選擇
+    if (cvsSelection && !memberCvsStores.some(s => s.store_id === cvsSelection.store_id && s.cvs_type === formData.cvsType)) {
+      // 使用者切換了超商類型，嘗試找該類型的預設門市
+      const defaultStoreForType = memberCvsStores.find(
+        (s: any) => s.is_default && s.cvs_type === formData.cvsType
+      );
+      if (defaultStoreForType) {
+        setSelectedCvsStoreId(defaultStoreForType.id);
+        setCvsSelection({
+          temp_trade_no: 'member_saved',
+          store_id: defaultStoreForType.store_id,
+          store_name: defaultStoreForType.store_name,
+          address: defaultStoreForType.address,
+        });
+      } else {
+        // 該類型沒有預設門市，清除選擇
+        setSelectedCvsStoreId(null);
+        setCvsSelection(null);
+      }
+      return;
+    }
+
+    if (!isLineLoggedIn || !memberCvsStores.length) return;
+
+    // 沒有選中門市時，找該類型的預設門市
+    const defaultStore = memberCvsStores.find(
+      (s: any) => s.is_default && s.cvs_type === formData.cvsType
+    );
+    if (defaultStore) {
+      setSelectedCvsStoreId(defaultStore.id);
+      setCvsSelection({
+        temp_trade_no: 'member_saved',
+        store_id: defaultStore.store_id,
+        store_name: defaultStore.store_name,
+        address: defaultStore.address,
+      });
+    }
+  }, [isLineLoggedIn, memberCvsStores, formData.cvsType]);
+
   // 載入零卡分期方案（當選擇零卡分期時）
   useEffect(() => {
     if (paymentMethod === 'chailease' && total > 0) {
@@ -341,6 +477,34 @@ export default function CheckoutPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // 清除選中的地址（因為使用者手動修改了）
+    if (['name', 'phone', 'zipCode', 'city', 'address'].includes(name)) {
+      setSelectedAddressId(null);
+    }
+  };
+
+  // 選擇常用地址
+  const handleSelectAddress = (addr: any) => {
+    setSelectedAddressId(addr.id);
+    setFormData(prev => ({
+      ...prev,
+      name: addr.name || '',
+      phone: addr.phone || '',
+      zipCode: addr.zip_code || '',
+      city: addr.city || '',
+      address: `${addr.district || ''}${addr.address || ''}`,
+    }));
+  };
+
+  // 選擇常用超商門市
+  const handleSelectCvsStore = (store: any) => {
+    setSelectedCvsStoreId(store.id);
+    setCvsSelection({
+      temp_trade_no: 'member_saved',
+      store_id: store.store_id,
+      store_name: store.store_name,
+      address: store.address,
+    });
   };
 
   // 套用折扣碼
@@ -569,6 +733,65 @@ export default function CheckoutPage() {
     return true;
   };
 
+  // 背景儲存超商門市（不阻擋結帳流程）
+  const saveCvsStoreInBackground = () => {
+    if (!isLineLoggedIn || shippingMethod !== 'cvs' || !cvsSelection) return;
+    // 檢查是否已存在
+    if (existingCvsStoreIds.has(cvsSelection.store_id)) {
+      console.log('[Checkout] CVS store already saved, skipping');
+      return;
+    }
+    // 背景儲存
+    fetch('/api/member/cvs-stores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cvs_type: formData.cvsType,
+        store_id: cvsSelection.store_id,
+        store_name: cvsSelection.store_name,
+        address: cvsSelection.address || '',
+        is_default: existingCvsStoreIds.size === 0, // 第一筆設為預設
+      }),
+    })
+      .then(() => console.log('[Checkout] CVS store saved'))
+      .catch(err => console.warn('[Checkout] CVS store save failed:', err));
+  };
+
+  // 背景儲存宅配地址（不阻擋結帳流程）
+  const saveAddressInBackground = () => {
+    if (!isLineLoggedIn || shippingMethod !== 'home') return;
+    // 組合 key 檢查是否已存在
+    const fullAddress = formData.address;
+    const key = `${formData.name}|${formData.phone}|${fullAddress}`;
+    if (existingAddressKeys.has(key)) {
+      console.log('[Checkout] Address already saved, skipping');
+      return;
+    }
+    // 判斷 label：如果沒有任何「住家」就用住家，否則用「其他」
+    let label = '住家';
+    // existingAddressKeys 只存了 key，無法判斷 label，所以用 size 判斷
+    if (existingAddressKeys.size > 0) {
+      label = '其他';
+    }
+    // 背景儲存
+    fetch('/api/member/addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        label,
+        name: formData.name,
+        phone: formData.phone,
+        zip_code: formData.zipCode || '',
+        city: formData.city || '',
+        district: '', // 結帳頁沒有分開 district 欄位
+        address: fullAddress,
+        is_default: existingAddressKeys.size === 0, // 第一筆設為預設
+      }),
+    })
+      .then(() => console.log('[Checkout] Address saved'))
+      .catch(err => console.warn('[Checkout] Address save failed:', err));
+  };
+
   // 提交結帳
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -704,6 +927,10 @@ if (paymentMethod === 'cod') {
             };
             writeExtension(); // 不 await，不阻擋跳轉
 
+            // 背景儲存常用地址/門市（不阻擋跳轉）
+            saveCvsStoreInBackground();
+            saveAddressInBackground();
+
             window.location.href = `/checkout/complete?cart_id=${cart.id}&payment_method=cod`;
             return;
           } else {
@@ -745,6 +972,24 @@ if (paymentMethod === 'cod') {
           const chaileaseData = await chaileaseRes.json();
 
           if (chaileaseRes.ok && chaileaseData.payment_url) {
+            // 儲存資料供完成頁背景儲存常用地址/門市
+            if (isLineLoggedIn) {
+              sessionStorage.setItem('checkout_save_data', JSON.stringify({
+                shippingMethod,
+                cvsType: formData.cvsType,
+                cvsSelection,
+                formData: {
+                  name: formData.name,
+                  phone: formData.phone,
+                  zipCode: formData.zipCode,
+                  city: formData.city,
+                  address: formData.address,
+                },
+                existingCvsStoreIds: Array.from(existingCvsStoreIds),
+                existingAddressKeys: Array.from(existingAddressKeys),
+              }));
+            }
+
             // 跳轉到中租付款頁
             window.location.href = chaileaseData.payment_url;
             return;
@@ -800,6 +1045,24 @@ if (paymentMethod === 'cod') {
       });
 
       if (res.success && res.checkout_url) {
+        // 儲存資料供完成頁背景儲存常用地址/門市
+        if (isLineLoggedIn) {
+          sessionStorage.setItem('checkout_save_data', JSON.stringify({
+            shippingMethod,
+            cvsType: formData.cvsType,
+            cvsSelection,
+            formData: {
+              name: formData.name,
+              phone: formData.phone,
+              zipCode: formData.zipCode,
+              city: formData.city,
+              address: formData.address,
+            },
+            existingCvsStoreIds: Array.from(existingCvsStoreIds),
+            existingAddressKeys: Array.from(existingAddressKeys),
+          }));
+        }
+
         // 跳轉到綠界付款
         window.location.href = res.checkout_url;
       } else {
@@ -1007,6 +1270,7 @@ if (paymentMethod === 'cod') {
                           onClick={() => {
                             setFormData((prev) => ({ ...prev, cvsType: cvs as CvsType }));
                             setCvsSelection(null); // 清除之前的選擇
+                            setSelectedCvsStoreId(null); // 清除選中的門市
                           }}
                           className={`px-4 py-2 border rounded-lg transition-colors ${
                             formData.cvsType === cvs
@@ -1019,6 +1283,54 @@ if (paymentMethod === 'cod') {
                       ))}
                     </div>
                   </div>
+
+                  {/* 常用門市選擇 */}
+                  {isLineLoggedIn && memberCvsStores.filter(s => s.cvs_type === formData.cvsType).length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#D4AF37' }}>
+                        🏪 選擇常用門市
+                      </label>
+                      <div className="space-y-2">
+                        {(() => {
+                          const filteredStores = memberCvsStores.filter(s => s.cvs_type === formData.cvsType);
+                          const displayStores = showAllCvsStores ? filteredStores : filteredStores.slice(0, 3);
+                          return (
+                            <>
+                              {displayStores.map((store) => (
+                                <button
+                                  key={store.id}
+                                  type="button"
+                                  onClick={() => handleSelectCvsStore(store)}
+                                  className="w-full text-left p-3 rounded-lg transition-all"
+                                  style={{
+                                    background: selectedCvsStoreId === store.id ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.02)',
+                                    border: selectedCvsStoreId === store.id ? '2px solid #D4AF37' : '1px solid rgba(255,255,255,0.1)',
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium text-white/80">{store.store_name}</span>
+                                    {store.is_default && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37' }}>預設</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-white/50 truncate">{store.address}</div>
+                                </button>
+                              ))}
+                              {filteredStores.length > 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAllCvsStores(!showAllCvsStores)}
+                                  className="w-full text-center py-2 text-sm text-white/50 hover:text-white/70 transition-colors"
+                                >
+                                  {showAllCvsStores ? '收起' : `顯示更多 (${filteredStores.length - 3} 筆)`}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 選擇門市按鈕 */}
                   <div>
@@ -1067,6 +1379,54 @@ if (paymentMethod === 'cod') {
               {/* 宅配 */}
               {shippingMethod === 'home' && (
                 <div className="grid gap-4">
+                  {/* 常用地址選擇 */}
+                  {isLineLoggedIn && memberAddresses.length > 0 && (
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#D4AF37' }}>
+                        📍 選擇常用地址
+                      </label>
+                      <div className="space-y-2">
+                        {(showAllAddresses ? memberAddresses : memberAddresses.slice(0, 3)).map((addr) => (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            onClick={() => handleSelectAddress(addr)}
+                            className="w-full text-left p-3 rounded-lg transition-all"
+                            style={{
+                              background: selectedAddressId === addr.id ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.02)',
+                              border: selectedAddressId === addr.id ? '2px solid #D4AF37' : '1px solid rgba(255,255,255,0.1)',
+                            }}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs px-1.5 py-0.5 rounded" style={{
+                                background: addr.is_default ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+                                color: addr.is_default ? '#D4AF37' : 'rgba(255,255,255,0.5)',
+                              }}>
+                                {addr.label}
+                              </span>
+                              {addr.is_default && (
+                                <span className="text-[10px]" style={{ color: '#D4AF37' }}>預設</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-white/80">{addr.name}　{addr.phone}</div>
+                            <div className="text-xs text-white/50 truncate">
+                              {addr.zip_code} {addr.city}{addr.district}{addr.address}
+                            </div>
+                          </button>
+                        ))}
+                        {memberAddresses.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllAddresses(!showAllAddresses)}
+                            className="w-full text-center py-2 text-sm text-white/50 hover:text-white/70 transition-colors"
+                          >
+                            {showAllAddresses ? '收起' : `顯示更多 (${memberAddresses.length - 3} 筆)`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">郵遞區號</label>

@@ -49,6 +49,73 @@ interface Order {
   };
 }
 
+// 背景儲存常用門市/地址
+function saveMemberDataInBackground() {
+  try {
+    const savedData = sessionStorage.getItem('checkout_save_data');
+    if (!savedData) return;
+
+    const data = JSON.parse(savedData);
+    sessionStorage.removeItem('checkout_save_data'); // 清除，避免重複儲存
+
+    const {
+      shippingMethod,
+      cvsType,
+      cvsSelection,
+      formData,
+      existingCvsStoreIds = [],
+      existingAddressKeys = [],
+    } = data;
+
+    const existingCvsSet = new Set(existingCvsStoreIds);
+    const existingAddrSet = new Set(existingAddressKeys);
+
+    // 儲存超商門市
+    if (shippingMethod === 'cvs' && cvsSelection?.store_id) {
+      if (!existingCvsSet.has(cvsSelection.store_id)) {
+        fetch('/api/member/cvs-stores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cvs_type: cvsType,
+            store_id: cvsSelection.store_id,
+            store_name: cvsSelection.store_name,
+            address: cvsSelection.address || '',
+            is_default: existingCvsSet.size === 0,
+          }),
+        })
+          .then(() => console.log('[Complete] CVS store saved'))
+          .catch(err => console.warn('[Complete] CVS store save failed:', err));
+      }
+    }
+
+    // 儲存宅配地址
+    if (shippingMethod === 'home' && formData?.address) {
+      const key = `${formData.name}|${formData.phone}|${formData.address}`;
+      if (!existingAddrSet.has(key)) {
+        fetch('/api/member/addresses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            label: existingAddrSet.size > 0 ? '其他' : '住家',
+            name: formData.name,
+            phone: formData.phone,
+            zip_code: formData.zipCode || '',
+            city: formData.city || '',
+            district: '',
+            address: formData.address,
+            is_default: existingAddrSet.size === 0,
+          }),
+        })
+          .then(() => console.log('[Complete] Address saved'))
+          .catch(err => console.warn('[Complete] Address save failed:', err));
+      }
+    }
+  } catch (err) {
+    console.warn('[Complete] saveMemberDataInBackground error:', err);
+  }
+}
+
 function CheckoutCompleteContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
@@ -57,6 +124,7 @@ function CheckoutCompleteContent() {
   const [retryCount, setRetryCount] = useState(0);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
+  const hasSavedMemberDataRef = useRef(false);
 
   // 零卡分期相關
   const [chaileaseStatus, setChaileaseStatus] = useState<'pending' | 'approved' | 'failed' | null>(null);
@@ -85,6 +153,11 @@ function CheckoutCompleteContent() {
     if (rtnCode === '1') {
       setStatus('success');
       localStorage.removeItem('medusa_cart_id');
+      // 背景儲存常用地址/門市（信用卡付款成功）
+      if (!hasSavedMemberDataRef.current) {
+        hasSavedMemberDataRef.current = true;
+        saveMemberDataInBackground();
+      }
       if (cartId) startOrderFlow(cartId);
     } else if (rtnCode) {
       setStatus('failed');
@@ -132,6 +205,11 @@ function CheckoutCompleteContent() {
             // 有 medusa_order_id 表示已核准並建立訂單
             if (tx.medusa_order_id) {
               setChaileaseStatus('approved');
+              // 背景儲存常用地址/門市（零卡分期成功）
+              if (!hasSavedMemberDataRef.current) {
+                hasSavedMemberDataRef.current = true;
+                saveMemberDataInBackground();
+              }
               // 用 cart_id 查 order
               if (tx.cart_id) {
                 await fetchOrderWithRetry(tx.cart_id, 0);
