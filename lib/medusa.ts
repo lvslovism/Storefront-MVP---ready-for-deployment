@@ -80,14 +80,22 @@ export async function getProducts(params?: {
   limit?: number;
   offset?: number;
   collection_id?: string[];
+  category_id?: string[];
+  tags?: string[];
 }): Promise<ProductsResponse> {
   const searchParams = new URLSearchParams();
   searchParams.set('region_id', REGION_ID);
-  
+
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.offset) searchParams.set('offset', String(params.offset));
   if (params?.collection_id) {
     params.collection_id.forEach(id => searchParams.append('collection_id[]', id));
+  }
+  if (params?.category_id) {
+    params.category_id.forEach(id => searchParams.append('category_id[]', id));
+  }
+  if (params?.tags) {
+    params.tags.forEach(tag => searchParams.append('tags[]', tag));
   }
 
   return medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);

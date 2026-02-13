@@ -2,28 +2,29 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-interface Collection {
+interface NavCategory {
   id: string;
-  title: string;
-  handle: string;
+  label: string;
+  slug: string;
+  icon_url: string | null;
 }
 
 interface ProductFilterProps {
-  collections: Collection[];
+  categories: NavCategory[];
 }
 
-export default function ProductFilter({ collections }: ProductFilterProps) {
+export default function ProductFilter({ categories }: ProductFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentCollection = searchParams.get('collection') || '';
+  const currentCategory = searchParams.get('category') || '';
   const currentSort = searchParams.get('sort') || '';
 
-  const handleCollectionChange = (handle: string) => {
+  const handleCategoryChange = (slug: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (handle) {
-      params.set('collection', handle);
+    if (slug) {
+      params.set('category', slug);
     } else {
-      params.delete('collection');
+      params.delete('category');
     }
     router.push(`/products?${params.toString()}`);
   };
@@ -38,38 +39,43 @@ export default function ProductFilter({ collections }: ProductFilterProps) {
     router.push(`/products?${params.toString()}`);
   };
 
-  // 排除「全系列商品」
-  const displayCollections = collections.filter(c => c.handle !== 'all-product');
+  // 選中狀態樣式
+  const selectedStyle = {
+    background: 'rgba(212, 175, 55, 0.15)',
+    color: '#D4AF37',
+    border: '1px solid #D4AF37',
+    fontWeight: 600,
+  };
+
+  // 未選中狀態樣式
+  const unselectedStyle = {
+    background: 'transparent',
+    color: 'rgba(255, 255, 255, 0.6)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    fontWeight: 400,
+  };
 
   return (
     <div className="mb-10">
       {/* 分類標籤 */}
       <div className="flex flex-wrap gap-2 mb-6 justify-center">
+        {/* 固定的「全部商品」按鈕 */}
         <button
-          onClick={() => handleCollectionChange('')}
+          onClick={() => handleCategoryChange('')}
           className="px-5 py-2 rounded-full text-sm transition-all duration-300"
-          style={{
-            background: !currentCollection ? '#D4AF37' : 'transparent',
-            color: !currentCollection ? '#000' : 'rgba(255,255,255,0.6)',
-            border: `1px solid ${!currentCollection ? '#D4AF37' : 'rgba(212,175,55,0.2)'}`,
-            fontWeight: !currentCollection ? 600 : 400,
-          }}
+          style={!currentCategory ? selectedStyle : unselectedStyle}
         >
           全部商品
         </button>
-        {displayCollections.map((col) => (
+        {/* CMS 分類標籤 */}
+        {categories.map((cat) => (
           <button
-            key={col.id}
-            onClick={() => handleCollectionChange(col.handle)}
+            key={cat.id}
+            onClick={() => handleCategoryChange(cat.slug)}
             className="px-5 py-2 rounded-full text-sm transition-all duration-300"
-            style={{
-              background: currentCollection === col.handle ? '#D4AF37' : 'transparent',
-              color: currentCollection === col.handle ? '#000' : 'rgba(255,255,255,0.6)',
-              border: `1px solid ${currentCollection === col.handle ? '#D4AF37' : 'rgba(212,175,55,0.2)'}`,
-              fontWeight: currentCollection === col.handle ? 600 : 400,
-            }}
+            style={currentCategory === cat.slug ? selectedStyle : unselectedStyle}
           >
-            {col.title}
+            {cat.label}
           </button>
         ))}
       </div>

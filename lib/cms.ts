@@ -412,3 +412,135 @@ export async function getHomeBanners(
   }
   return result;
 }
+
+// ============ 商品分類 API ============
+
+export interface NavCategory {
+  id: string
+  label: string
+  slug: string
+  filter_type: 'category' | 'collection' | 'tag' | 'custom' | 'all'
+  filter_value: string | null
+  custom_filter: {
+    price_lte?: number
+    price_gte?: number
+    tags?: string[]
+    category_id?: string
+  } | null
+  icon_url: string | null
+}
+
+export interface HomeCategory {
+  id: string
+  label: string
+  slug: string
+  icon_url: string | null
+  image_url: string | null
+  description: string | null
+}
+
+/** 導航列分類（商品列表頁篩選標籤） */
+export async function getNavCategories(): Promise<NavCategory[]> {
+  const { data, error } = await getSupabase()
+    .from('cms_storefront_categories')
+    .select('id, label, slug, filter_type, filter_value, custom_filter, icon_url')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_active', true)
+    .eq('show_in_nav', true)
+    .order('sort_order', { ascending: true })
+
+  if (error) console.error('[CMS] getNavCategories error:', error)
+  return (data as NavCategory[]) || []
+}
+
+/** 首頁分類入口區 */
+export async function getHomeCategories(): Promise<HomeCategory[]> {
+  const { data, error } = await getSupabase()
+    .from('cms_storefront_categories')
+    .select('id, label, slug, icon_url, image_url, description')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_active', true)
+    .eq('show_in_home', true)
+    .order('sort_order', { ascending: true })
+
+  if (error) console.error('[CMS] getHomeCategories error:', error)
+  return (data as HomeCategory[]) || []
+}
+
+/** 檢查 filter_value 是否有效 */
+export function isValidFilterValue(value: string | null): boolean {
+  return !!value && value.trim() !== '' && !value.startsWith('TODO')
+}
+
+/** 檢查分類是否有有效的篩選設定 */
+export function isCategoryFilterValid(category: NavCategory): boolean {
+  switch (category.filter_type) {
+    case 'category':
+    case 'collection':
+    case 'tag':
+      return isValidFilterValue(category.filter_value)
+    case 'custom':
+      const cf = category.custom_filter || {}
+      // custom_filter 至少要有一個有效的篩選條件
+      return !!(cf.price_lte || cf.price_gte || cf.tags?.length || cf.category_id)
+    case 'all':
+      return true // 'all' 類型不需要 filter_value
+    default:
+      return false
+  }
+}
+
+/** 根據分類組裝 Medusa 查詢參數 */
+export function buildMedusaQuery(category: NavCategory): Record<string, any> {
+  const params: Record<string, any> = {}
+
+  // 驗證 filter_value 有效性
+  if (!isCategoryFilterValid(category)) {
+    // 無效的 filter_value，回傳空 params（顯示全部商品）
+    return params
+  }
+
+  switch (category.filter_type) {
+    case 'category':
+      if (isValidFilterValue(category.filter_value)) {
+        params.category_id = [category.filter_value]
+      }
+      break
+    case 'collection':
+      if (isValidFilterValue(category.filter_value)) {
+        params.collection_id = [category.filter_value]
+      }
+      break
+    case 'tag':
+      if (isValidFilterValue(category.filter_value)) {
+        params.tags = [category.filter_value]
+      }
+      break
+    case 'custom':
+      const cf = category.custom_filter || {}
+      if (cf.price_lte) params.price_lte = cf.price_lte * 100
+      if (cf.price_gte) params.price_gte = cf.price_gte * 100
+      if (cf.tags) params.tags = cf.tags
+      if (cf.category_id && isValidFilterValue(cf.category_id)) {
+        params.category_id = [cf.category_id]
+      }
+      break
+  }
+  return params
+}
+
+/** 取得分類 SEO 資訊 */
+export async function getCategorySeo(slug: string) {
+  const { data, error } = await getSupabase()
+    .from('cms_category_seo')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('category_handle', slug)
+    .eq('is_active', true)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[CMS] getCategorySeo error:', error)
+  }
+  return data
+}
