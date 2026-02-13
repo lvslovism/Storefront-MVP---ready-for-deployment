@@ -513,14 +513,14 @@ export function buildMedusaQuery(category: NavCategory): Record<string, any> {
       break
     case 'tag':
       if (isValidFilterValue(category.filter_value)) {
-        params.tags = [category.filter_value]
+        params.tag_id = [category.filter_value]
       }
       break
     case 'custom':
       const cf = category.custom_filter || {}
       if (cf.price_lte) params.price_lte = cf.price_lte * 100
       if (cf.price_gte) params.price_gte = cf.price_gte * 100
-      if (cf.tags) params.tags = cf.tags
+      if (cf.tags) params.tag_id = cf.tags
       if (cf.category_id && isValidFilterValue(cf.category_id)) {
         params.category_id = [cf.category_id]
       }

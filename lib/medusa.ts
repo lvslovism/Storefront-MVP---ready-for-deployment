@@ -81,7 +81,7 @@ export async function getProducts(params?: {
   offset?: number;
   collection_id?: string[];
   category_id?: string[];
-  tags?: string[];
+  tag_id?: string[];
 }): Promise<ProductsResponse> {
   const searchParams = new URLSearchParams();
   searchParams.set('region_id', REGION_ID);
@@ -94,8 +94,8 @@ export async function getProducts(params?: {
   if (params?.category_id) {
     params.category_id.forEach(id => searchParams.append('category_id[]', id));
   }
-  if (params?.tags) {
-    params.tags.forEach(tag => searchParams.append('tags[]', tag));
+  if (params?.tag_id) {
+    params.tag_id.forEach(id => searchParams.append('tag_id[]', id));
   }
 
   return medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);
