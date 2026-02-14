@@ -55,9 +55,63 @@ All customization happens in `config/store.json`:
 
 Store assets (logo, favicon) go in `public/tenant/`.
 
+## Auth System (Email + LINE Login)
+
+Two authentication paths, both stored in Supabase:
+- `app/api/auth/email/` — Email registration with OTP verification, forgot/reset password
+- `app/api/auth/line/` — LINE Login via OAuth, callback handles member binding
+- `app/api/auth/logout/` — Unified logout
+- Session managed via cookies, verified by Supabase JWT
+
+### Member System
+
+- `app/api/member/profile/` — Member profile CRUD
+- `app/api/member/orders/` — Order history (from Medusa)
+- `app/api/member/tier/` — Membership tier (from Supabase)
+- `app/api/member/wallet/` — Wallet/points balance
+- `app/(website)/account/` — Member center UI (AccountClient.tsx)
+
+### LIFF Integration
+
+- `app/(liff)/liff/` — LINE Front-end Framework pages
+- Used for in-LINE-app checkout and member binding flows
+
+### API Routes Overview
+
+| Route | Purpose |
+|-------|---------|
+| `api/auth/*` | Email + LINE authentication |
+| `api/cart/*` | Cart operations (via Medusa) |
+| `api/categories/*` | Category CRUD with auto-revalidation |
+| `api/member/*` | Member profile, orders, tier, wallet |
+| `api/order/*` | Order creation and management |
+| `api/order-extension/*` | Order extensions (custom fields) |
+| `api/payment/*` | Payment processing |
+| `api/search/*` | Product search |
+| `api/wallet/*` | Wallet operations |
+| `api/revalidate/*` | ISR cache revalidation |
+| `api/liff/*` | LIFF-specific endpoints |
+
+## External Dependencies
+
+| Service | Purpose | Config Location |
+|---------|---------|----------------|
+| Medusa v2.x | Product catalog, cart, orders | `MEDUSA_BACKEND_URL`, `config/store.json` |
+| Supabase | Auth, member data, DB | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| LINE Login | OAuth login | `LINE_LOGIN_CHANNEL_ID`, `LINE_LOGIN_CHANNEL_SECRET` |
+| ECPay Gateway | Payment + logistics | `config/store.json` ecpay section |
+| Resend | Transactional email (OTP) | `RESEND_API_KEY` |
+
 ## Taiwan-Specific Features
 
 - CVS logistics integration (7-ELEVEN, FamilyMart, Hi-Life)
 - CVS store picker uses popup window with polling for selection
 - Currency: TWD with `Intl.NumberFormat` formatting
 - Primary language: Traditional Chinese (zh-TW)
+
+## Key Rules
+
+- 價格/金額永遠從 DB 取，不信任前端
+- API 必含輸入驗證
+- LINE webhook 需簽名驗證
+- CORS 限制已設定在 Next.js config
