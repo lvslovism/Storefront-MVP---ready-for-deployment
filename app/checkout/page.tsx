@@ -1023,6 +1023,7 @@ if (paymentMethod === 'cod') {
           shipping_method: shippingMethod,
           shipping_fee: shippingFee,
           credits_used: creditsToUse,
+          ...(lineCustomerId && { customer_id: lineCustomerId }),
           // 折扣碼
           ...(promoApplied && {
             promo_code: promoApplied.code,
