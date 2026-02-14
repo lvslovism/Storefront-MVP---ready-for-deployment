@@ -99,8 +99,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const originalPrice = selectedVariant?.calculated_price?.original_amount;
   const hasDiscount = originalPrice && originalPrice > price;
 
-  // 是否可加入購物車
-  const canAdd = product.variants?.length === 1 || selectedVariant !== null;
+  // 庫存判斷
+  const currentVariant = selectedVariant || (product.variants?.length === 1 ? product.variants[0] : null);
+  const inventoryQty = currentVariant?.inventory_quantity;
+  const isOutOfStock = inventoryQty !== undefined && inventoryQty !== null && inventoryQty <= 0;
+  const isLowStock = inventoryQty !== undefined && inventoryQty !== null && inventoryQty > 0 && inventoryQty <= 5;
+
+  // 是否可加入購物車（需選擇規格 + 有庫存）
+  const canAdd = (product.variants?.length === 1 || selectedVariant !== null) && !isOutOfStock;
 
   // 處理選項變更
   const handleOptionSelect = (optionId: string, value: string) => {
@@ -225,6 +231,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             )}
           </div>
 
+          {/* 庫存狀態提示 */}
+          {isOutOfStock && (
+            <p className="text-sm mb-4 text-red-400">此商品目前缺貨</p>
+          )}
+          {isLowStock && (
+            <p className="text-sm mb-4" style={{ color: '#D4AF37' }}>僅剩 {inventoryQty} 件</p>
+          )}
+
           {/* 分隔線 */}
           <div className="mb-6" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }} />
 
@@ -253,26 +267,28 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <button
               onClick={handleAddToCart}
               disabled={!canAdd || isAdding}
-              className="w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300"
+              className={`w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
-                background: !canAdd
+                background: isOutOfStock
                   ? 'rgba(255,255,255,0.1)'
-                  : addedFeedback
-                    ? '#06C755'
-                    : 'linear-gradient(135deg, #D4AF37, #B8962E)',
-                color: !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
+                  : !canAdd
+                    ? 'rgba(255,255,255,0.1)'
+                    : addedFeedback
+                      ? '#06C755'
+                      : 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                color: isOutOfStock || !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
                 cursor: canAdd && !isAdding ? 'pointer' : 'not-allowed',
                 boxShadow: canAdd && !addedFeedback ? '0 4px 20px rgba(212,175,55,0.3)' : 'none',
               }}
             >
-              {isAdding ? '加入中...' : addedFeedback ? '✓ 已加入購物車' : !canAdd ? '請選擇規格' : '加入購物車'}
+              {isOutOfStock ? '暫時缺貨' : isAdding ? '加入中...' : addedFeedback ? '✓ 已加入購物車' : !canAdd ? '請選擇規格' : '加入購物車'}
             </button>
 
             {/* 立即購買 */}
             <button
               onClick={handleBuyNow}
               disabled={!canAdd || isAdding}
-              className="w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300"
+              className={`w-full py-4 rounded-full text-base font-semibold tracking-wider transition-all duration-300 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
                 background: 'transparent',
                 border: '1px solid rgba(212,175,55,0.5)',
@@ -280,7 +296,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 cursor: canAdd && !isAdding ? 'pointer' : 'not-allowed',
               }}
             >
-              {isAdding ? '處理中...' : '立即購買'}
+              {isOutOfStock ? '暫時缺貨' : isAdding ? '處理中...' : '立即購買'}
             </button>
           </div>
 
@@ -388,30 +404,32 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <button
               onClick={handleAddToCart}
               disabled={!canAdd || isAdding}
-              className="flex-1 py-3 rounded-full text-sm font-semibold transition-all"
+              className={`flex-1 py-3 rounded-full text-sm font-semibold transition-all ${isOutOfStock ? 'opacity-50' : ''}`}
               style={{
-                background: !canAdd
+                background: isOutOfStock
                   ? 'rgba(255,255,255,0.1)'
-                  : addedFeedback
-                    ? '#06C755'
-                    : 'linear-gradient(135deg, #D4AF37, #B8962E)',
-                color: !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
+                  : !canAdd
+                    ? 'rgba(255,255,255,0.1)'
+                    : addedFeedback
+                      ? '#06C755'
+                      : 'linear-gradient(135deg, #D4AF37, #B8962E)',
+                color: isOutOfStock || !canAdd ? 'rgba(255,255,255,0.3)' : addedFeedback ? '#fff' : '#000',
               }}
             >
-              {isAdding ? '...' : addedFeedback ? '✓ 已加入' : !canAdd ? '請選規格' : '加入購物車'}
+              {isOutOfStock ? '暫時缺貨' : isAdding ? '...' : addedFeedback ? '✓ 已加入' : !canAdd ? '請選規格' : '加入購物車'}
             </button>
 
             <button
               onClick={handleBuyNow}
               disabled={!canAdd || isAdding}
-              className="flex-1 py-3 rounded-full text-sm font-semibold transition-all"
+              className={`flex-1 py-3 rounded-full text-sm font-semibold transition-all ${isOutOfStock ? 'opacity-50' : ''}`}
               style={{
                 background: 'transparent',
                 border: '1px solid rgba(212,175,55,0.5)',
                 color: !canAdd ? 'rgba(255,255,255,0.3)' : '#D4AF37',
               }}
             >
-              立即購買
+              {isOutOfStock ? '缺貨' : '立即購買'}
             </button>
           </div>
         </div>

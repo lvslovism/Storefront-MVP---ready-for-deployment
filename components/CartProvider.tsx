@@ -110,9 +110,17 @@ export default function CartProvider({ children }: { children: ReactNode }) {
         setError(null);
         const { cart: updatedCart } = await addToCartApi(cart.id, variantId, quantity);
         setCart(updatedCart);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to add item:', err);
-        setError('加入購物車失敗');
+        const errMsg = err?.message || '';
+        // 偵測庫存不足錯誤（Medusa 回傳 409 或含 inventory/insufficient 關鍵字）
+        if (errMsg.includes('inventory') || errMsg.includes('insufficient') || errMsg.includes('out of stock') || errMsg.includes('409')) {
+          const inventoryMsg = '此商品庫存不足，請減少數量或稍後再試';
+          setError(inventoryMsg);
+          alert(inventoryMsg);
+        } else {
+          setError('加入購物車失敗');
+        }
         throw err;
       } finally {
         setIsLoading(false);

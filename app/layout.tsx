@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: config.seo.title,
     description: config.seo.description,
+    url: 'https://shop.minjie0326.com',
     images: [config.seo.ogImage],
     siteName: config.store.name,
     locale: 'zh_TW',

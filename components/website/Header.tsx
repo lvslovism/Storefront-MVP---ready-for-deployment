@@ -31,7 +31,9 @@ export default function WebsiteHeader() {
                   className="h-8 w-auto"
                 />
               ) : (
-                <span className="text-xl font-bold gold-text">{config.store.name}</span>
+                <span className="text-lg font-light tracking-[3px] uppercase" style={{ color: '#D4AF37' }}>
+                  {config.store.name || 'MINJIE STUDIO'}
+                </span>
               )}
             </Link>
 

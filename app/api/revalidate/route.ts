@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (secret !== process.env.REVALIDATE_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   // 支援單一 path 或多個 paths

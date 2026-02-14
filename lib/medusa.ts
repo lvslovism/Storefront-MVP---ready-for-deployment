@@ -98,13 +98,17 @@ export async function getProducts(params?: {
     params.tag_id.forEach(id => searchParams.append('tag_id[]', id));
   }
 
+  // 確保回傳 inventory_quantity（庫存判斷用）
+  searchParams.set('fields', '*variants,+variants.inventory_quantity');
+
   return medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);
 }
 
 export async function getProduct(handle: string): Promise<{ product: Product }> {
   const searchParams = new URLSearchParams();
   searchParams.set('region_id', REGION_ID);
-  
+  searchParams.set('fields', '*variants,+variants.inventory_quantity');
+
   return medusaFetch<{ product: Product }>(`/store/products/${handle}?${searchParams}`);
 }
 
@@ -112,6 +116,7 @@ export async function getProductByHandle(handle: string): Promise<Product | null
   const searchParams = new URLSearchParams();
   searchParams.set('region_id', REGION_ID);
   searchParams.set('handle', handle);
+  searchParams.set('fields', '*variants,+variants.inventory_quantity');
 
   const response = await medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);
   return response.products[0] || null;
