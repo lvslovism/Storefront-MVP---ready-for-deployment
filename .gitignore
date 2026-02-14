@@ -43,3 +43,6 @@ next-env.d.ts
 *.ps1
 
 .env*.local
+
+# Claude Code local settings
+.claude/settings.local.json
