@@ -1,40 +1,70 @@
-// ═══════════════════════════════════════════════════════════════
-// components/website/Footer.tsx
-// 更新版 Footer — 新增「服務資訊」欄（政策頁連結）
-// 施工說明書 v2.1 Phase 1 Step 7
-// ⚠️ 此檔案取代現有的 components/website/Footer.tsx
-// ═══════════════════════════════════════════════════════════════
-
 import { config } from '@/lib/config';
+import { getMerchantSettings, getSection } from '@/lib/cms';
 import Link from 'next/link';
 
-const footerLinks = [
-  { label: '常見問題', href: '/faq' },
-  { label: '配送說明', href: '/policy/shipping' },
-  { label: '退換貨政策', href: '/policy/return' },
-  { label: '隱私權政策', href: '/policy/privacy' },
-  { label: '服務條款', href: '/policy/terms' },
+// Hardcoded fallback 連結
+const defaultFooterLinks = [
+  { label: '常見問題', url: '/faq' },
+  { label: '配送說明', url: '/policy/shipping' },
+  { label: '退換貨政策', url: '/policy/return' },
+  { label: '隱私權政策', url: '/policy/privacy' },
+  { label: '服務條款', url: '/policy/terms' },
 ];
 
-export default function WebsiteFooter() {
+export default async function WebsiteFooter() {
+  // 並行讀取 merchant_settings 和 footer_info
+  let merchantSettings: any = null;
+  let footerInfo: any = null;
+
+  try {
+    [merchantSettings, footerInfo] = await Promise.all([
+      getMerchantSettings(),
+      getSection('home', 'footer_info'),
+    ]);
+  } catch (error) {
+    console.error('[Footer] Error fetching data:', error);
+  }
+
+  // 聯絡資訊（merchant_settings → config fallback）
+  const storeName = merchantSettings?.store_name || config.store.name;
+  const email = merchantSettings?.contact_email || config.contact.email;
+  const phone = merchantSettings?.contact_phone || config.contact.phone;
+  const lineOA = merchantSettings?.line_oa_url || config.contact.lineOA;
+  const facebook = merchantSettings?.facebook_url || config.contact.facebook;
+  const instagram = merchantSettings?.instagram_url || config.contact.instagram;
+
+  // 服務連結（footer_info CMS → hardcoded fallback）
+  const footerLinks: { label: string; url: string }[] =
+    footerInfo?.links && Array.isArray(footerInfo.links) && footerInfo.links.length > 0
+      ? footerInfo.links
+      : defaultFooterLinks;
+
+  // 社群連結（footer_info CMS 覆蓋，若無則用 merchant_settings / config）
+  const socialLineUrl = footerInfo?.social?.line_url || lineOA;
+  const socialFacebookUrl = footerInfo?.social?.facebook_url || facebook;
+  const socialInstagramUrl = footerInfo?.social?.instagram_url || instagram;
+
+  // 年份動態化
+  const year = new Date().getFullYear();
+
   return (
     <footer className="bg-black border-t border-gold/20 mt-16">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* 品牌資訊 */}
           <div>
-            <h3 className="gold-text font-bold text-lg mb-4">{config.store.name}</h3>
+            <h3 className="gold-text font-bold text-lg mb-4">{storeName}</h3>
             <p className="text-sm text-gray-400">{config.store.description}</p>
           </div>
 
-          {/* 服務資訊（新增） */}
+          {/* 服務資訊 */}
           <div>
             <h3 className="text-gold font-bold text-lg mb-4">服務資訊</h3>
             <ul className="space-y-2 text-sm">
               {footerLinks.map((link) => (
-                <li key={link.href}>
+                <li key={link.url}>
                   <Link
-                    href={link.href}
+                    href={link.url}
                     className="text-gray-400 hover:text-gold transition-colors"
                   >
                     {link.label}
@@ -48,30 +78,30 @@ export default function WebsiteFooter() {
           <div>
             <h3 className="text-gold font-bold text-lg mb-4">聯絡我們</h3>
             <ul className="space-y-2 text-sm">
-              {config.contact.email && (
+              {email && (
                 <li>
                   <a
-                    href={`mailto:${config.contact.email}`}
+                    href={`mailto:${email}`}
                     className="text-gray-400 hover:text-gold transition-colors"
                   >
-                    {config.contact.email}
+                    {email}
                   </a>
                 </li>
               )}
-              {config.contact.phone && (
+              {phone && (
                 <li>
                   <a
-                    href={`tel:${config.contact.phone}`}
+                    href={`tel:${phone}`}
                     className="text-gray-400 hover:text-gold transition-colors"
                   >
-                    {config.contact.phone}
+                    {phone}
                   </a>
                 </li>
               )}
-              {config.contact.lineOA && (
+              {lineOA && (
                 <li>
                   <a
-                    href={config.contact.lineOA}
+                    href={lineOA}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-400 hover:text-line-green transition-colors"
@@ -87,9 +117,9 @@ export default function WebsiteFooter() {
           <div>
             <h3 className="text-gold font-bold text-lg mb-4">追蹤我們</h3>
             <div className="flex space-x-4">
-              {config.contact.lineOA && (
+              {socialLineUrl && (
                 <a
-                  href={config.contact.lineOA}
+                  href={socialLineUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-line-green transition-colors"
@@ -100,9 +130,9 @@ export default function WebsiteFooter() {
                   </svg>
                 </a>
               )}
-              {config.contact.facebook && (
+              {socialFacebookUrl && (
                 <a
-                  href={config.contact.facebook}
+                  href={socialFacebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-gold transition-colors"
@@ -113,9 +143,9 @@ export default function WebsiteFooter() {
                   </svg>
                 </a>
               )}
-              {config.contact.instagram && (
+              {socialInstagramUrl && (
                 <a
-                  href={config.contact.instagram}
+                  href={socialInstagramUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-gold transition-colors"
@@ -130,9 +160,9 @@ export default function WebsiteFooter() {
           </div>
         </div>
 
-        {/* 版權 */}
+        {/* 版權 — 年份動態化 + 店名從 merchant_settings */}
         <div className="border-t border-gold/20 mt-8 pt-8 text-center text-sm text-gray-500">
-          <p>&copy; 2026 MINJIE STUDIO. All rights reserved.</p>
+          <p>&copy; {year} {storeName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

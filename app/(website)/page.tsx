@@ -1,11 +1,40 @@
 // app/(website)/page.tsx
 import { getProducts } from '@/lib/medusa';
-import { getHomeBanners } from '@/lib/cms';
+import { getHomeBanners, getPageSeo } from '@/lib/cms';
 import ImageSection from '@/components/cms/ImageSection';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ProductCard from '@/components/ProductCard';
+import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
+
+const defaultHomeMeta = {
+  title: 'MINJIE STUDIO｜嚴選保健食品',
+  description: '嚴選全球頂級原料，打造專屬你的健康方案。益生菌、膠原蛋白、酵素等保健食品。',
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const seo = await getPageSeo('home');
+    if (seo) {
+      return {
+        title: seo.title || defaultHomeMeta.title,
+        description: seo.description || defaultHomeMeta.description,
+        openGraph: {
+          title: seo.title || defaultHomeMeta.title,
+          description: seo.description || defaultHomeMeta.description,
+          ...(seo.og_image && { images: [{ url: seo.og_image }] }),
+        },
+      };
+    }
+  } catch (error) {
+    console.error('[Home] getPageSeo error:', error);
+  }
+  return {
+    title: defaultHomeMeta.title,
+    description: defaultHomeMeta.description,
+  };
+}
 
 export default async function HomePage() {
   // 並行請求：CMS 圖片 + Medusa 商品

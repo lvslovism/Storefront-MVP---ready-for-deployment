@@ -8,18 +8,36 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const secret = headerSecret || body.secret;
 
-  // 簡單驗證（正式環境用更強的驗證）
+  // 驗證 REVALIDATE_SECRET
+  if (!process.env.REVALIDATE_SECRET) {
+    console.error('[Revalidate] REVALIDATE_SECRET not configured');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+
   if (secret !== process.env.REVALIDATE_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { path } = body;
+  // 支援單一 path 或多個 paths
+  const { path, paths } = body;
+  const pathsToRevalidate: string[] = [];
 
-  revalidatePath(path || '/');
+  if (paths && Array.isArray(paths)) {
+    pathsToRevalidate.push(...paths);
+  } else if (path) {
+    pathsToRevalidate.push(path);
+  } else {
+    pathsToRevalidate.push('/');
+  }
+
+  // 逐一 revalidate
+  for (const p of pathsToRevalidate) {
+    revalidatePath(p);
+  }
 
   return NextResponse.json({
     revalidated: true,
-    path: path || '/',
-    timestamp: new Date().toISOString()
+    paths: pathsToRevalidate,
+    timestamp: new Date().toISOString(),
   });
 }

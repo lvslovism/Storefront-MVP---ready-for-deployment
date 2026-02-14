@@ -413,6 +413,28 @@ export async function getHomeBanners(
   return result;
 }
 
+// ============ 商家設定 API ============
+
+export async function getMerchantSettings(merchantCode: string = MERCHANT) {
+  const { data, error } = await getSupabase()
+    .from('merchant_settings')
+    .select('*')
+    .eq('merchant_code', merchantCode)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[CMS] getMerchantSettings error:', error)
+  }
+  return data || null
+}
+
+// ============ 頁面 SEO API ============
+
+export async function getPageSeo(page: string, merchantCode: string = MERCHANT) {
+  const content = await getSection(page, 'seo')
+  return content || null
+}
+
 // ============ 商品分類 API ============
 
 export interface NavCategory {

@@ -4,7 +4,7 @@
 // 施工說明書 v2.1 Phase 2 Step 11
 // ═══════════════════════════════════════════════════════════════
 
-import { getPosts, getFeaturedPosts } from '@/lib/cms';
+import { getPosts, getFeaturedPosts, getPageSeo } from '@/lib/cms';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -13,17 +13,43 @@ const baseUrl = 'https://shop.minjie0326.com';
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
-export const metadata: Metadata = {
+const defaultBlogMeta = {
   title: '保健知識｜MINJIE STUDIO',
   description: '益生菌怎麼選？膠原蛋白什麼時候吃？MINJIE STUDIO 分享實用保健知識，幫你做出更好的健康選擇。',
-  alternates: { canonical: `${baseUrl}/blog` },
-  openGraph: {
-    title: '保健知識｜MINJIE STUDIO',
-    description: '益生菌怎麼選？膠原蛋白什麼時候吃？MINJIE STUDIO 分享實用保健知識。',
-    url: `${baseUrl}/blog`,
-    type: 'website',
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const seo = await getPageSeo('blog');
+    if (seo) {
+      return {
+        title: seo.title || defaultBlogMeta.title,
+        description: seo.description || defaultBlogMeta.description,
+        alternates: { canonical: `${baseUrl}/blog` },
+        openGraph: {
+          title: seo.title || defaultBlogMeta.title,
+          description: seo.description || defaultBlogMeta.description,
+          url: `${baseUrl}/blog`,
+          type: 'website',
+          ...(seo.og_image && { images: [{ url: seo.og_image }] }),
+        },
+      };
+    }
+  } catch (error) {
+    console.error('[Blog] getPageSeo error:', error);
+  }
+  return {
+    title: defaultBlogMeta.title,
+    description: defaultBlogMeta.description,
+    alternates: { canonical: `${baseUrl}/blog` },
+    openGraph: {
+      title: defaultBlogMeta.title,
+      description: defaultBlogMeta.description,
+      url: `${baseUrl}/blog`,
+      type: 'website',
+    },
+  };
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);

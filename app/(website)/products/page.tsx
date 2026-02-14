@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getProducts } from '@/lib/medusa';
-import { getNavCategories, buildMedusaQuery, getCategorySeo } from '@/lib/cms';
+import { getNavCategories, buildMedusaQuery, getCategorySeo, getPageSeo } from '@/lib/cms';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ProductCard from '@/components/ProductCard';
 import ProductFilter from '@/components/website/ProductFilter';
@@ -51,11 +51,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const categorySlug = searchParams.category;
 
+  const defaultProductsMeta = {
+    title: '全部商品｜MINJIE STUDIO',
+    description: '瀏覽 MINJIE STUDIO 全系列保健食品。',
+  };
+
   if (!categorySlug) {
-    return {
-      title: '全部商品',
-      description: 'MINJIE STUDIO 全系列健康食品，益生菌、膠原蛋白、酵素、葉黃素等嚴選商品。',
-    };
+    try {
+      const seo = await getPageSeo('products');
+      if (seo) {
+        return {
+          title: seo.title || defaultProductsMeta.title,
+          description: seo.description || defaultProductsMeta.description,
+        };
+      }
+    } catch (error) {
+      console.error('[Products] getPageSeo error:', error);
+    }
+    return defaultProductsMeta;
   }
 
   // 從 CMS 讀取 SEO 資訊
