@@ -92,8 +92,10 @@ export async function POST(request: NextRequest) {
     if (!emailResult.success) {
       console.error('[ForgotPassword] Email 發送失敗:', emailResult.error);
       // 開發階段 fallback：回傳驗證碼讓前端顯示
-      response.devCode = otp;
-      response.devMessage = '寄信服務設定中，驗證碼暫時顯示於此';
+      if (process.env.NODE_ENV === 'development') {
+        response.devCode = otp;
+        response.devMessage = '寄信服務設定中，驗證碼暫時顯示於此';
+      }
     }
 
     return NextResponse.json(response);
