@@ -122,6 +122,27 @@ export async function getProductByHandle(handle: string): Promise<Product | null
   return response.products[0] || null;
 }
 
+// 按 ID 列表批次取商品（保持 CMS 排序）
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (!ids.length) return [];
+
+  const searchParams = new URLSearchParams();
+  searchParams.set('region_id', REGION_ID);
+  ids.forEach(id => searchParams.append('id', id));
+  searchParams.set('fields', '*variants,+variants.inventory_quantity');
+  searchParams.set('limit', String(ids.length));
+
+  try {
+    const response = await medusaFetch<ProductsResponse>(`/store/products?${searchParams}`);
+    // 按照傳入 ids 的順序排序（保持 CMS 排序）
+    const productMap = new Map(response.products.map(p => [p.id, p]));
+    return ids.map(id => productMap.get(id)).filter(Boolean) as Product[];
+  } catch (error) {
+    console.error('[Medusa] getProductsByIds error:', error);
+    return [];
+  }
+}
+
 // ============ 商品分類 API ============
 
 export interface Collection {

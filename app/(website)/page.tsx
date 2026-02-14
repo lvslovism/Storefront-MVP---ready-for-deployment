@@ -1,9 +1,8 @@
 // app/(website)/page.tsx
-import { getProducts } from '@/lib/medusa';
-import { getHomeBanners, getPageSeo } from '@/lib/cms';
+import { getProducts, getProductsByIds } from '@/lib/medusa';
+import { getHomeBanners, getPageSeo, getFeaturedProductIds, getFeaturedPlacements } from '@/lib/cms';
 import ImageSection from '@/components/cms/ImageSection';
-import SectionTitle from '@/components/ui/SectionTitle';
-import ProductCard from '@/components/ProductCard';
+import FeaturedProducts from '@/components/cms/FeaturedProducts';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
@@ -11,6 +10,14 @@ export const revalidate = 3600; // ISR: 1 小時
 const defaultHomeMeta = {
   title: 'MINJIE STUDIO｜嚴選保健食品',
   description: '嚴選全球頂級原料，打造專屬你的健康方案。益生菌、膠原蛋白、酵素等保健食品。',
+};
+
+// placement 對應的中文 Tab 名稱
+const PLACEMENT_LABELS: Record<string, string> = {
+  'home_featured': '精選推薦',
+  'home_new': '新品上架',
+  'home_hot': '熱銷排行',
+  'category_top': '分類精選',
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -37,13 +44,38 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  // 並行請求：CMS 圖片 + Medusa 商品
-  const [banners, productsData] = await Promise.all([
+  // 並行請求：CMS 圖片 + CMS 推薦商品 placements
+  const [banners, placements] = await Promise.all([
     getHomeBanners(),
-    getProducts({ limit: 50 }),
+    getFeaturedPlacements(),
   ]);
 
-  const products = productsData.products;
+  // 根據 CMS 資料決定商品區塊
+  let tabs: { key: string; label: string; products: any[] }[] = [];
+  let fallbackProducts: any[] = [];
+
+  if (placements.length > 0) {
+    // CMS 驅動模式：按 placement 分組取商品
+    const tabResults = await Promise.all(
+      placements.map(async (placement: string) => {
+        const productIds = await getFeaturedProductIds(placement);
+        const products = await getProductsByIds(productIds);
+        return {
+          key: placement,
+          label: PLACEMENT_LABELS[placement] || placement,
+          products,
+        };
+      })
+    );
+    // 過濾掉沒有商品的 Tab
+    tabs = tabResults.filter(t => t.products.length > 0);
+  }
+
+  if (tabs.length === 0) {
+    // Fallback：CMS 沒資料時用 Medusa 全部商品
+    const { products } = await getProducts({ limit: 8 });
+    fallbackProducts = products;
+  }
 
   return (
     <div style={{ background: '#0a0a0a' }}>
@@ -67,19 +99,8 @@ export default async function HomePage() {
       {/* ===== 區塊 7: 購物流程圖 ===== */}
       <ImageSection banner={banners.shopping_flow} />
 
-      {/* ===== 區塊 8: 商品分類標題 ===== */}
-      <section className="py-16 px-5">
-        <SectionTitle subtitle="PRODUCTS" title="商品選單" />
-
-        {/* TODO: 分類 Tabs（接 Medusa Collections） */}
-
-        {/* 商品網格 */}
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {products.map((product: any) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+      {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
+      <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} />
 
       {/* ===== 區塊 10: 品牌社群 + 數據統計 ===== */}
       <ImageSection banner={banners.community_cta} />

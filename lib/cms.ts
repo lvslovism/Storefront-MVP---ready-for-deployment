@@ -100,6 +100,21 @@ export async function getFeaturedProductIds(placement: string) {
   return data?.map(d => d.product_id) || []
 }
 
+// 取得所有有效的推薦商品 placement（首頁分類 Tabs 用）
+export async function getFeaturedPlacements(): Promise<string[]> {
+  const { data, error } = await getSupabase()
+    .from('cms_featured_products')
+    .select('placement')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_active', true)
+
+  if (error) console.error('[CMS] getFeaturedPlacements error:', error)
+
+  // 取得不重複的 placement 列表
+  const placements = Array.from(new Set((data || []).map((d: any) => d.placement)))
+  return placements
+}
+
 // 促銷活動查詢
 export async function getCampaigns() {
   const now = new Date().toISOString()
