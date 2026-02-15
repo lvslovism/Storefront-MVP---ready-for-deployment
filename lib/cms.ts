@@ -86,6 +86,23 @@ export async function getAnnouncements() {
   return data || []
 }
 
+// 依 display_mode 查詢公告
+export async function getAnnouncementsByMode(mode: 'static' | 'marquee' | 'popup') {
+  const now = new Date().toISOString()
+  const { data, error } = await getSupabase()
+    .from('cms_announcements')
+    .select('*')
+    .eq('merchant_code', MERCHANT)
+    .eq('is_active', true)
+    .eq('display_mode', mode)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+    .order('sort_order', { ascending: true })
+
+  if (error) console.error('[CMS] getAnnouncementsByMode error:', error)
+  return data || []
+}
+
 // 推薦商品 ID 查詢
 export async function getFeaturedProductIds(placement: string) {
   const { data, error } = await getSupabase()
@@ -580,4 +597,31 @@ export async function getCategorySeo(slug: string) {
     console.error('[CMS] getCategorySeo error:', error)
   }
   return data
+}
+
+/**
+ * 取得商品排序設定
+ * 回傳按 sort_order ASC 排序的商品 ID 列表
+ */
+export async function getProductSortOrder(merchantCode: string = MERCHANT): Promise<{
+  product_id: string
+  sort_order: number
+  is_pinned: boolean
+}[]> {
+  try {
+    const { data, error } = await getSupabase()
+      .from('cms_product_sort_order')
+      .select('product_id, sort_order, is_pinned')
+      .eq('merchant_code', merchantCode)
+      .order('sort_order', { ascending: true })
+
+    if (error) {
+      console.error('[CMS] getProductSortOrder error:', error)
+      return []
+    }
+    return data || []
+  } catch (e) {
+    console.error('[CMS] getProductSortOrder exception:', e)
+    return []
+  }
 }
