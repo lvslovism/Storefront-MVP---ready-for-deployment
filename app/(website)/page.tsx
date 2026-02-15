@@ -1,8 +1,9 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
-import { getHomeBanners, getPageSeo, getFeaturedProductIds, getFeaturedPlacements } from '@/lib/cms';
+import { getHomeBanners, getPageSeo, getFeaturedProductIds, getFeaturedPlacements, getSection } from '@/lib/cms';
 import ImageSection from '@/components/cms/ImageSection';
 import FeaturedProducts from '@/components/cms/FeaturedProducts';
+import TrustNumbers from '@/components/cms/TrustNumbers';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
@@ -44,10 +45,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  // 並行請求：CMS 圖片 + CMS 推薦商品 placements
-  const [banners, placements] = await Promise.all([
+  // 並行請求：CMS 圖片 + CMS 推薦商品 placements + 信任數字
+  const [banners, placements, trustNumbers] = await Promise.all([
     getHomeBanners(),
     getFeaturedPlacements(),
+    getSection('home', 'trust_numbers'),
   ]);
 
   // 根據 CMS 資料決定商品區塊
@@ -104,6 +106,9 @@ export default async function HomePage() {
 
       {/* ===== 區塊 10: 品牌社群 + 數據統計 ===== */}
       <ImageSection banner={banners.community_cta} />
+
+      {/* ===== 區塊 11: 信任數字（CMS 驅動 + fallback） ===== */}
+      <TrustNumbers data={trustNumbers} />
 
     </div>
   );
