@@ -61,9 +61,11 @@ export default function FeaturedProducts({ tabs, fallbackProducts = [] }: Featur
         )}
 
         {/* Product Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           {currentProducts.slice(0, 8).map((product: any) => (
-            <ProductCard key={product.id} product={product} />
+            <div key={product.id} className="w-[calc(50%-8px)] md:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)] max-w-[300px]">
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
 

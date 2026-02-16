@@ -147,21 +147,23 @@ export default async function HomePage() {
       {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
       <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} />
 
-      {/* ===== 區塊 9: 更多商品 ===== */}
+      {/* ===== 區塊 9: 嚴選商品（剩餘） ===== */}
       {sortedRemaining.length > 0 && (
         <section className="py-16 px-4">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-10">
               <p className="text-xs tracking-[4px] mb-3" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                ─── MORE PRODUCTS ───
+                ─── OUR PRODUCTS ───
               </p>
               <h2 className="text-2xl md:text-3xl font-light tracking-wider" style={{ color: '#D4AF37' }}>
-                更多商品
+                嚴選商品
               </h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
               {sortedRemaining.map((product: any) => (
-                <ProductCard key={product.id} product={product} />
+                <div key={product.id} className="w-[calc(50%-8px)] md:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)] max-w-[300px]">
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           </div>
