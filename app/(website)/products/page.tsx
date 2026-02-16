@@ -174,6 +174,9 @@ export default async function ProductsPage({
   let sorted = filtered;
   const userSort = searchParams.sort || '';
 
+  console.log('[Products] Total from Medusa:', products.length);
+  console.log('[Products] Sort order entries:', sortOrder.length);
+
   if (userSort) {
     // 使用者選了排序（價格/最新），優先使用
     sorted = sortProducts(filtered, userSort);
@@ -201,8 +204,12 @@ export default async function ProductsPage({
       return sa.sort_order - sb.sort_order;
     });
 
+    console.log('[Products] With sort:', withSort.length, 'Without sort:', withoutSort.length);
+
     sorted = [...withSort, ...withoutSort];
   }
+
+  console.log('[Products] Final count:', sorted.length);
 
   // 分類標題
   const titleSubtitle = currentCategory
