@@ -646,11 +646,20 @@ export async function getHomepageProductSettings(merchantCode: string = MERCHANT
       .from('cms_homepage_product_settings')
       .select('*')
       .eq('merchant_code', merchantCode)
-      .single()
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    if (error || !data) {
+    if (error) {
+      console.error('[CMS] getHomepageProductSettings error:', error)
       return defaults
     }
+
+    if (!data) {
+      return defaults
+    }
+
+    // DB 值覆蓋預設值（確保 DB 的 false 不被預設值 true 蓋掉）
     return { ...defaults, ...data }
   } catch (e) {
     console.error('[CMS] getHomepageProductSettings exception:', e)

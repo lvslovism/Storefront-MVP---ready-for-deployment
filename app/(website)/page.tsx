@@ -78,21 +78,9 @@ export default async function HomePage() {
       console.error('[Home] getProductSortOrder error:', err);
       return [];
     }),
-    getHomepageProductSettings().catch((err) => {
-      console.error('[Home] getHomepageProductSettings error:', err);
-      return {
-        show_product_wall: true,
-        wall_title: '嚴選商品',
-        wall_subtitle: 'OUR PRODUCTS',
-        wall_source: 'exclude_featured',
-        wall_max_items: 12,
-        wall_columns_mobile: 2,
-        wall_columns_desktop: 4,
-        show_view_all_button: true,
-        view_all_text: '查看全部商品',
-        view_all_url: '/products',
-      };
-    }),
+    // getHomepageProductSettings 內部已有 try-catch + 預設值 fallback
+    // 不要在外層再加 .catch 回傳 show_product_wall:true — 會覆蓋 DB 設定的 false
+    getHomepageProductSettings(),
   ]);
 
   const allProducts: any[] = allProductsResult.products || [];
@@ -187,6 +175,7 @@ export default async function HomePage() {
       <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} />
 
       {/* ===== 區塊 9: 商品牆 — 由 CMS 設定控制 ===== */}
+      {/* DEBUG: show_product_wall={String(homepageSettings.show_product_wall)} wall_source={homepageSettings.wall_source} wall_max_items={homepageSettings.wall_max_items} displayProducts={displayProducts.length} */}
       {homepageSettings.show_product_wall && displayProducts.length > 0 && (
         <section className="py-16 px-4">
           <div className="max-w-7xl mx-auto">
