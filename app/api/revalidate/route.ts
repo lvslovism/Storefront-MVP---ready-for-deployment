@@ -18,8 +18,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const paths: string[] = body.paths || (body.path ? [body.path] : ['/']);
 
+    console.log('[Revalidate] Received request, paths:', paths, 'host:', request.headers.get('host'), 'origin:', request.headers.get('origin'));
+
     for (const p of paths) {
       revalidatePath(p);
+      console.log('[Revalidate] Revalidated path:', p);
     }
 
     return NextResponse.json({

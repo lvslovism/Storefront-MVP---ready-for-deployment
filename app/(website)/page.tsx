@@ -151,6 +151,8 @@ export default async function HomePage() {
 
   return (
     <div style={{ background: '#0a0a0a' }}>
+      {/* Debug: View Source 可看到實際 DB 讀取值 */}
+      <div data-wall-debug={JSON.stringify({show: homepageSettings.show_product_wall, source: homepageSettings.wall_source, max: homepageSettings.wall_max_items, displayCount: displayProducts.length})} style={{display:'none'}} />
 
       {/* ===== 區塊 3: Hero 品牌區 ===== */}
       <ImageSection

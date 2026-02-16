@@ -642,6 +642,7 @@ export async function getHomepageProductSettings(merchantCode: string = MERCHANT
   }
 
   try {
+    console.log('[HomepageSettings] querying with merchantCode:', merchantCode, 'supabaseUrl:', supabaseUrl)
     const { data, error } = await getSupabase()
       .from('cms_homepage_product_settings')
       .select('*')
@@ -650,17 +651,22 @@ export async function getHomepageProductSettings(merchantCode: string = MERCHANT
       .limit(1)
       .maybeSingle()
 
+    console.log('[HomepageSettings] query result:', JSON.stringify(data), 'error:', JSON.stringify(error))
+
     if (error) {
       console.error('[CMS] getHomepageProductSettings error:', error)
       return defaults
     }
 
     if (!data) {
+      console.log('[HomepageSettings] no data found, returning defaults')
       return defaults
     }
 
+    const merged = { ...defaults, ...data }
+    console.log('[HomepageSettings] merged result: show_product_wall=', merged.show_product_wall, 'wall_source=', merged.wall_source)
     // DB 值覆蓋預設值（確保 DB 的 false 不被預設值 true 蓋掉）
-    return { ...defaults, ...data }
+    return merged
   } catch (e) {
     console.error('[CMS] getHomepageProductSettings exception:', e)
     return defaults
