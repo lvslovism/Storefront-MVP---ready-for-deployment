@@ -625,3 +625,35 @@ export async function getProductSortOrder(merchantCode: string = MERCHANT): Prom
     return []
   }
 }
+
+// 首頁商品牆設定
+export async function getHomepageProductSettings(merchantCode: string = MERCHANT) {
+  const defaults = {
+    show_product_wall: true,
+    wall_title: '嚴選商品',
+    wall_subtitle: 'OUR PRODUCTS',
+    wall_source: 'exclude_featured',
+    wall_max_items: 12,
+    wall_columns_mobile: 2,
+    wall_columns_desktop: 4,
+    show_view_all_button: true,
+    view_all_text: '查看全部商品',
+    view_all_url: '/products',
+  }
+
+  try {
+    const { data, error } = await getSupabase()
+      .from('cms_homepage_product_settings')
+      .select('*')
+      .eq('merchant_code', merchantCode)
+      .single()
+
+    if (error || !data) {
+      return defaults
+    }
+    return { ...defaults, ...data }
+  } catch (e) {
+    console.error('[CMS] getHomepageProductSettings exception:', e)
+    return defaults
+  }
+}

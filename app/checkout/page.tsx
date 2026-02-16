@@ -8,7 +8,7 @@ import { useCart } from '@/components/CartProvider';
 import { formatPrice, config, shipping } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
 import { initPaymentForCart } from '@/lib/medusa';
-import CreditsSelector from '@/components/checkout/CreditsSelector';
+import CreditsSelectorV2 from '@/components/checkout/CreditsSelectorV2';
 
 type ShippingMethod = 'cvs' | 'home';
 type CvsType = 'UNIMARTC2C' | 'FAMIC2C' | 'HILIFEC2C';
@@ -1607,14 +1607,14 @@ if (paymentMethod === 'cod') {
                   </p>
                 </div>
               )}
-              <CreditsSelector
+              <CreditsSelectorV2
                 customerId={lineCustomerId}
-                subtotal={subtotal}
+                orderSubtotal={subtotal}
                 onCreditsChange={setCreditsToUse}
               />
               {creditsToUse > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: '#D4AF37' }}>💰 購物金折抵</span>
+                  <span style={{ color: '#D4AF37' }}>🎁 折抵優惠</span>
                   <span style={{ color: '#D4AF37' }}>-{formatPrice(creditsToUse)}</span>
                 </div>
               )}
