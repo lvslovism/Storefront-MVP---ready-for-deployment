@@ -151,9 +151,6 @@ export default async function HomePage() {
 
   return (
     <div style={{ background: '#0a0a0a' }}>
-      {/* Debug: View Source 可看到實際 DB 讀取值 */}
-      <div data-wall-debug={JSON.stringify({show: homepageSettings.show_product_wall, source: homepageSettings.wall_source, max: homepageSettings.wall_max_items, displayCount: displayProducts.length})} style={{display:'none'}} />
-
       {/* ===== 區塊 3: Hero 品牌區 ===== */}
       <ImageSection
         banner={banners.hero_brand}
@@ -174,10 +171,9 @@ export default async function HomePage() {
       <ImageSection banner={banners.shopping_flow} />
 
       {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
-      <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} />
+      <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} showViewAll={homepageSettings.show_view_all_button} />
 
       {/* ===== 區塊 9: 商品牆 — 由 CMS 設定控制 ===== */}
-      {/* DEBUG: show_product_wall={String(homepageSettings.show_product_wall)} wall_source={homepageSettings.wall_source} wall_max_items={homepageSettings.wall_max_items} displayProducts={displayProducts.length} */}
       {homepageSettings.show_product_wall && displayProducts.length > 0 && (
         <section className="py-16 px-4">
           <div className="max-w-7xl mx-auto">

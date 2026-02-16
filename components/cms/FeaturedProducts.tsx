@@ -12,9 +12,10 @@ interface Tab {
 interface FeaturedProductsProps {
   tabs: Tab[];
   fallbackProducts?: any[];  // 當 tabs 為空時的 fallback
+  showViewAll?: boolean;
 }
 
-export default function FeaturedProducts({ tabs, fallbackProducts = [] }: FeaturedProductsProps) {
+export default function FeaturedProducts({ tabs, fallbackProducts = [], showViewAll = true }: FeaturedProductsProps) {
   const [activeTab, setActiveTab] = useState(0);
 
   // 沒有 CMS 資料時，用 fallback
@@ -70,26 +71,28 @@ export default function FeaturedProducts({ tabs, fallbackProducts = [] }: Featur
         </div>
 
         {/* View All Button */}
-        <div className="text-center mt-10">
-          <a
-            href="/products"
-            className="inline-block px-8 py-3 border text-sm tracking-wider transition-all duration-300 hover:text-black"
-            style={{
-              borderColor: '#D4AF37',
-              color: '#D4AF37',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#D4AF37';
-              e.currentTarget.style.color = '#000';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#D4AF37';
-            }}
-          >
-            查看全部商品
-          </a>
-        </div>
+        {showViewAll && (
+          <div className="text-center mt-10">
+            <a
+              href="/products"
+              className="inline-block px-8 py-3 border text-sm tracking-wider transition-all duration-300 hover:text-black"
+              style={{
+                borderColor: '#D4AF37',
+                color: '#D4AF37',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#D4AF37';
+                e.currentTarget.style.color = '#000';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#D4AF37';
+              }}
+            >
+              查看全部商品
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );
