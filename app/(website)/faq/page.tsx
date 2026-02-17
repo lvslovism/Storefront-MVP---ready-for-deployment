@@ -4,7 +4,7 @@
 // 施工說明書 v2.1 Phase 1 Step 5
 // ═══════════════════════════════════════════════════════════════
 
-import { getSection } from '@/lib/cms';
+import { getSection, getPageSeo, DEFAULT_SEO } from '@/lib/cms';
 import FAQClient from './FAQClient';
 import type { Metadata } from 'next';
 
@@ -13,17 +13,26 @@ const baseUrl = 'https://shop.minjie0326.com';
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: '常見問題 FAQ｜MINJIE STUDIO',
-  description: '益生菌怎麼吃？可以退貨嗎？運費怎麼算？MINJIE STUDIO 常見問題一次解答。',
-  alternates: { canonical: `${baseUrl}/faq` },
-  openGraph: {
-    title: '常見問題 FAQ｜MINJIE STUDIO',
-    description: '益生菌怎麼吃？可以退貨嗎？運費怎麼算？MINJIE STUDIO 常見問題一次解答。',
-    url: `${baseUrl}/faq`,
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const pageSeo = await getPageSeo('faq');
+
+  const title = pageSeo?.meta_title || DEFAULT_SEO.faq.title;
+  const description = pageSeo?.meta_description || DEFAULT_SEO.faq.description;
+  const ogImage = pageSeo?.og_image || DEFAULT_SEO.default_og_image;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `${baseUrl}/faq` },
+    openGraph: {
+      title: pageSeo?.og_title || title,
+      description,
+      url: `${baseUrl}/faq`,
+      type: 'website',
+      images: ogImage ? [ogImage] : undefined,
+    },
+  };
+}
 
 export default async function FAQPage() {
   const data = await getSection('faq', 'categories');

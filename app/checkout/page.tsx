@@ -389,7 +389,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (paymentMethod === 'chailease' && total > 0) {
       setChaileaseLoading(true);
-      fetch(`https://ephdzjkgpkuydpbkxnfw.supabase.co/functions/v1/chailease-plans?merchant_code=default&amount=${Math.round(total)}`)
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/functions/v1/chailease-plans?merchant_code=default&amount=${Math.round(total)}`)
         .then(res => res.json())
         .then(data => {
           if (data.plans && data.plans.length > 0) {
@@ -954,7 +954,7 @@ if (paymentMethod === 'cod') {
 
         try {
           const chaileaseRes = await fetch(
-            'https://ephdzjkgpkuydpbkxnfw.supabase.co/functions/v1/chailease-checkout',
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/functions/v1/chailease-checkout`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

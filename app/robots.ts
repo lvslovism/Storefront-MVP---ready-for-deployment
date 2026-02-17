@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/api/', '/checkout/', '/liff/'],
+      disallow: ['/api/', '/checkout/', '/account/', '/liff/'],
     },
     sitemap: 'https://shop.minjie0326.com/sitemap.xml',
   };

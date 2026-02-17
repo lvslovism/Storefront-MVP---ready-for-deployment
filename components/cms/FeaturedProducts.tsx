@@ -13,9 +13,11 @@ interface FeaturedProductsProps {
   tabs: Tab[];
   fallbackProducts?: any[];  // 當 tabs 為空時的 fallback
   showViewAll?: boolean;
+  sectionTitle?: string;
+  sectionSubtitle?: string;
 }
 
-export default function FeaturedProducts({ tabs, fallbackProducts = [], showViewAll = true }: FeaturedProductsProps) {
+export default function FeaturedProducts({ tabs, fallbackProducts = [], showViewAll = true, sectionTitle = '精選商品', sectionSubtitle = 'FEATURED' }: FeaturedProductsProps) {
   const [activeTab, setActiveTab] = useState(0);
 
   // 沒有 CMS 資料時，用 fallback
@@ -30,15 +32,15 @@ export default function FeaturedProducts({ tabs, fallbackProducts = [], showView
   const currentProducts = displayTabs[activeTab]?.products || [];
 
   return (
-    <section className="py-16 px-4">
+    <section className="pt-16 pb-6 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Section Title */}
         <div className="text-center mb-10">
           <p className="text-xs tracking-[4px] mb-3" style={{ color: 'rgba(212,175,55,0.6)' }}>
-            ─── OUR PRODUCTS ───
+            ─── {sectionSubtitle} ───
           </p>
           <h2 className="text-2xl md:text-3xl font-light tracking-wider" style={{ color: '#D4AF37' }}>
-            嚴選商品
+            {sectionTitle}
           </h2>
         </div>
 

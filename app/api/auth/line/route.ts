@@ -12,29 +12,41 @@ function generateState(): string {
 }
 
 export async function GET() {
-  // 產生 state 並存到 cookie
-  const state = generateState();
+  try {
+    // 產生 state 並存到 cookie
+    const state = generateState();
 
-  const cookieStore = await cookies();
-  cookieStore.set('line_login_state', state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 600, // 10 分鐘
-    path: '/',
-  });
+    const cookieStore = await cookies();
+    cookieStore.set('line_login_state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 分鐘
+      path: '/',
+    });
 
-  // 組合 LINE 授權 URL
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: LINE_LOGIN_CHANNEL_ID,
-    redirect_uri: LINE_LOGIN_CALLBACK_URL,
-    state: state,
-    scope: 'profile openid email',
-  });
+    // 組合 LINE 授權 URL
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: LINE_LOGIN_CHANNEL_ID,
+      redirect_uri: LINE_LOGIN_CALLBACK_URL,
+      state: state,
+      scope: 'profile openid email',
+    });
 
-  const authUrl = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
+    const authUrl = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
 
-  // 跳轉到 LINE 授權頁
-  return NextResponse.redirect(authUrl);
+    // 跳轉到 LINE 授權頁
+    return NextResponse.redirect(authUrl);
+  } catch (error) {
+    // Next.js redirect() throws NEXT_REDIRECT error, must re-throw
+    if ((error as any)?.digest?.startsWith?.('NEXT_REDIRECT')) {
+      throw error;
+    }
+    console.error('LINE login init error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getProducts } from '@/lib/medusa';
-import { getNavCategories, buildMedusaQuery, getCategorySeo, getPageSeo, getProductSortOrder } from '@/lib/cms';
+import { getNavCategories, buildMedusaQuery, getCategorySeo, getPageSeo, DEFAULT_SEO, getProductSortOrder } from '@/lib/cms';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ProductCard from '@/components/ProductCard';
 import ProductFilter from '@/components/website/ProductFilter';
@@ -51,27 +51,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const categorySlug = searchParams.category;
 
-  const defaultProductsMeta = {
-    title: '全部商品｜MINJIE STUDIO',
-    description: '瀏覽 MINJIE STUDIO 全系列保健食品。',
-  };
-
   if (!categorySlug) {
-    try {
-      const seo = await getPageSeo('products');
-      if (seo) {
-        return {
-          title: seo.title || defaultProductsMeta.title,
-          description: seo.description || defaultProductsMeta.description,
-        };
-      }
-    } catch (error) {
-      console.error('[Products] getPageSeo error:', error);
-    }
-    return defaultProductsMeta;
+    const pageSeo = await getPageSeo('products');
+
+    const title = pageSeo?.meta_title || DEFAULT_SEO.products.title;
+    const description = pageSeo?.meta_description || DEFAULT_SEO.products.description;
+    const ogImage = pageSeo?.og_image || DEFAULT_SEO.default_og_image;
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title: pageSeo?.og_title || title,
+        description,
+        images: ogImage ? [ogImage] : undefined,
+        siteName: DEFAULT_SEO.brand_name,
+      },
+    };
   }
 
-  // 從 CMS 讀取 SEO 資訊
+  // 從 CMS 讀取分類 SEO 資訊
   try {
     const seo = await getCategorySeo(categorySlug);
 

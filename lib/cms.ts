@@ -460,11 +460,102 @@ export async function getMerchantSettings(merchantCode: string = MERCHANT) {
   return data || null
 }
 
-// ============ 頁面 SEO API ============
+// ============================================
+// SEO 查詢函數（上線前 Part 1 新增）
+// ============================================
 
+/** 預設 SEO 值 — DB 沒資料時的 fallback */
+export const DEFAULT_SEO = {
+  brand_name: 'MINJIE STUDIO',
+  home: {
+    title: 'MINJIE STUDIO｜嚴選保健食品',
+    description: '嚴選全球頂級原料，打造專屬你的健康方案。益生菌、膠原蛋白、酵素等保健食品。',
+  },
+  products: {
+    title: '全部商品｜MINJIE STUDIO',
+    description: '瀏覽 MINJIE STUDIO 全系列保健食品，嚴選益生菌、膠原蛋白、酵素、養生飲品。',
+  },
+  blog: {
+    title: '保健知識｜MINJIE STUDIO',
+    description: 'MINJIE STUDIO 保健知識文章，幫助你了解更多健康資訊。',
+  },
+  about: {
+    title: '品牌故事｜MINJIE STUDIO',
+    description: '了解 MINJIE STUDIO 的品牌理念與堅持。',
+  },
+  faq: {
+    title: '常見問題｜MINJIE STUDIO',
+    description: 'MINJIE STUDIO 常見問題解答。',
+  },
+  default_og_image: '/og-image.jpg',
+} as const
+
+/**
+ * 讀取頁面 SEO 設定
+ * cms_sections WHERE page={page}, section_key='seo'
+ */
 export async function getPageSeo(page: string, merchantCode: string = MERCHANT) {
-  const content = await getSection(page, 'seo')
-  return content || null
+  try {
+    const { data, error } = await getSupabase()
+      .from('cms_sections')
+      .select('content')
+      .eq('merchant_code', merchantCode)
+      .eq('page', page)
+      .eq('section_key', 'seo')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error || !data?.content) return null
+
+    return data.content as {
+      meta_title?: string
+      meta_description?: string
+      og_image?: string
+      og_title?: string
+      canonical_url?: string
+      no_index?: boolean
+    }
+  } catch (error) {
+    console.error(`[CMS] Failed to fetch SEO for page "${page}":`, error)
+    return null
+  }
+}
+
+/**
+ * 讀取全站 SEO 設定
+ * cms_sections WHERE page='global', section_key='seo_settings'
+ */
+export async function getGlobalSeo(merchantCode: string = MERCHANT) {
+  try {
+    const { data, error } = await getSupabase()
+      .from('cms_sections')
+      .select('content')
+      .eq('merchant_code', merchantCode)
+      .eq('page', 'global')
+      .eq('section_key', 'seo_settings')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error || !data?.content) return null
+
+    return data.content as {
+      brand_name?: string
+      brand_tagline?: string
+      default_meta_description?: string
+      default_og_image?: string
+      google_verification?: string
+      social_links?: {
+        line?: string
+        instagram?: string
+        facebook?: string
+      }
+    }
+  } catch (error) {
+    console.error('[CMS] Failed to fetch global SEO:', error)
+    return null
+  }
 }
 
 // ============ 商品分類 API ============
@@ -639,6 +730,8 @@ export async function getHomepageProductSettings(merchantCode: string = MERCHANT
     show_view_all_button: true,
     view_all_text: '查看全部商品',
     view_all_url: '/products',
+    featured_title: '精選商品',
+    featured_subtitle: 'FEATURED',
   }
 
   try {

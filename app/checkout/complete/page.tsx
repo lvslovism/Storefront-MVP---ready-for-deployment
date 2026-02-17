@@ -181,11 +181,13 @@ function CheckoutCompleteContent() {
 
     async function pollChaileaseTransaction(attempt: number) {
       try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
         const res = await fetch(
-          `https://ephdzjkgpkuydpbkxnfw.supabase.co/rest/v1/chailease_transactions?order_id=eq.${encodeURIComponent(orderId)}&select=medusa_order_id,status,cart_id`,
+          `${supabaseUrl}/rest/v1/chailease_transactions?order_id=eq.${encodeURIComponent(orderId)}&select=medusa_order_id,status,cart_id`,
           {
             headers: {
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwaGR6amtncGt1eWRwYmt4bmZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzOTk5NTQsImV4cCI6MjA4Mzk3NTk1NH0.Hc3jVOazC84T-ROS34NbLQgt2uOSctDShb78tQMr0AE',
+              'apikey': supabaseAnonKey,
             },
           }
         );

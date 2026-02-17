@@ -4,7 +4,7 @@
 // 施工說明書 v2.1 Phase 1 Step 4
 // ═══════════════════════════════════════════════════════════════
 
-import { getAllSections } from '@/lib/cms';
+import { getAllSections, getPageSeo, DEFAULT_SEO } from '@/lib/cms';
 import AnimatedSection from '@/components/website/AnimatedSection';
 import type { Metadata } from 'next';
 
@@ -13,17 +13,26 @@ const baseUrl = 'https://shop.minjie0326.com';
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: '關於我們｜MINJIE STUDIO',
-  description: '了解 MINJIE STUDIO 的品牌故事、核心價值與堅持——為家人把關每一口。',
-  alternates: { canonical: `${baseUrl}/about` },
-  openGraph: {
-    title: '關於我們｜MINJIE STUDIO',
-    description: '了解 MINJIE STUDIO 的品牌故事、核心價值與堅持——為家人把關每一口。',
-    url: `${baseUrl}/about`,
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const pageSeo = await getPageSeo('about');
+
+  const title = pageSeo?.meta_title || DEFAULT_SEO.about.title;
+  const description = pageSeo?.meta_description || DEFAULT_SEO.about.description;
+  const ogImage = pageSeo?.og_image || DEFAULT_SEO.default_og_image;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `${baseUrl}/about` },
+    openGraph: {
+      title: pageSeo?.og_title || title,
+      description,
+      url: `${baseUrl}/about`,
+      type: 'website',
+      images: ogImage ? [ogImage] : undefined,
+    },
+  };
+}
 
 export default async function AboutPage() {
   const sections = await getAllSections('about');

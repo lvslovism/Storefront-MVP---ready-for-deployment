@@ -1,6 +1,6 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
-import { getHomeBanners, getPageSeo, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings } from '@/lib/cms';
+import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings } from '@/lib/cms';
 import ImageSection from '@/components/cms/ImageSection';
 import FeaturedProducts from '@/components/cms/FeaturedProducts';
 import TrustNumbers from '@/components/cms/TrustNumbers';
@@ -8,11 +8,6 @@ import ProductCard from '@/components/ProductCard';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
-
-const defaultHomeMeta = {
-  title: 'MINJIE STUDIO｜嚴選保健食品',
-  description: '嚴選全球頂級原料，打造專屬你的健康方案。益生菌、膠原蛋白、酵素等保健食品。',
-};
 
 // placement 對應的中文 Tab 名稱
 const PLACEMENT_LABELS: Record<string, string> = {
@@ -42,25 +37,39 @@ function getColumnClass(mobile: number, desktop: number): string {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const seo = await getPageSeo('home');
-    if (seo) {
-      return {
-        title: seo.title || defaultHomeMeta.title,
-        description: seo.description || defaultHomeMeta.description,
-        openGraph: {
-          title: seo.title || defaultHomeMeta.title,
-          description: seo.description || defaultHomeMeta.description,
-          ...(seo.og_image && { images: [{ url: seo.og_image }] }),
-        },
-      };
-    }
-  } catch (error) {
-    console.error('[Home] getPageSeo error:', error);
-  }
+  const [pageSeo, globalSeo] = await Promise.all([
+    getPageSeo('home'),
+    getGlobalSeo(),
+  ]);
+
+  const brandName = globalSeo?.brand_name || DEFAULT_SEO.brand_name;
+
+  const title = pageSeo?.meta_title
+    || (globalSeo?.brand_tagline ? `${globalSeo.brand_tagline}｜${brandName}` : null)
+    || DEFAULT_SEO.home.title;
+  const description = pageSeo?.meta_description
+    || globalSeo?.default_meta_description
+    || DEFAULT_SEO.home.description;
+  const ogImage = pageSeo?.og_image
+    || globalSeo?.default_og_image
+    || DEFAULT_SEO.default_og_image;
+
   return {
-    title: defaultHomeMeta.title,
-    description: defaultHomeMeta.description,
+    title,
+    description,
+    openGraph: {
+      title: pageSeo?.og_title || title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
+      siteName: brandName,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: pageSeo?.og_title || title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
+    },
   };
 }
 
@@ -171,11 +180,17 @@ export default async function HomePage() {
       <ImageSection banner={banners.shopping_flow} />
 
       {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
-      <FeaturedProducts tabs={tabs} fallbackProducts={fallbackProducts} showViewAll={homepageSettings.show_view_all_button} />
+      <FeaturedProducts
+        tabs={tabs}
+        fallbackProducts={fallbackProducts}
+        showViewAll={homepageSettings.show_view_all_button}
+        sectionTitle={homepageSettings.featured_title}
+        sectionSubtitle={homepageSettings.featured_subtitle}
+      />
 
       {/* ===== 區塊 9: 商品牆 — 由 CMS 設定控制 ===== */}
       {homepageSettings.show_product_wall && displayProducts.length > 0 && (
-        <section className="py-16 px-4">
+        <section className="pt-6 pb-16 px-4">
           <div className="max-w-7xl mx-auto">
             {/* 標題 */}
             <div className="text-center mb-10">

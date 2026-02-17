@@ -7,7 +7,7 @@ const supabase = createClient(
 );
 
 const MEDUSA_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'https://medusa-store-minjie-production.up.railway.app';
-const MEDUSA_PK = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || 'pk_9e9c701859cf64dcc2679cb893ae10055f19f3aaa941eb7bcc95493e20256eb2';
+const MEDUSA_PK = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '';
 const GATEWAY_URL = process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_URL || 'https://ecpay-gateway-production.up.railway.app';
 // FIX MEDIUM-1: API Key 從環境變數讀，不查 DB
 const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY || '';

@@ -4,7 +4,7 @@
 // 施工說明書 v2.1 Phase 2 Step 11
 // ═══════════════════════════════════════════════════════════════
 
-import { getPosts, getFeaturedPosts, getPageSeo } from '@/lib/cms';
+import { getPosts, getFeaturedPosts, getPageSeo, DEFAULT_SEO } from '@/lib/cms';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -13,40 +13,23 @@ const baseUrl = 'https://shop.minjie0326.com';
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
-const defaultBlogMeta = {
-  title: '保健知識｜MINJIE STUDIO',
-  description: '益生菌怎麼選？膠原蛋白什麼時候吃？MINJIE STUDIO 分享實用保健知識，幫你做出更好的健康選擇。',
-};
-
 export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const seo = await getPageSeo('blog');
-    if (seo) {
-      return {
-        title: seo.title || defaultBlogMeta.title,
-        description: seo.description || defaultBlogMeta.description,
-        alternates: { canonical: `${baseUrl}/blog` },
-        openGraph: {
-          title: seo.title || defaultBlogMeta.title,
-          description: seo.description || defaultBlogMeta.description,
-          url: `${baseUrl}/blog`,
-          type: 'website',
-          ...(seo.og_image && { images: [{ url: seo.og_image }] }),
-        },
-      };
-    }
-  } catch (error) {
-    console.error('[Blog] getPageSeo error:', error);
-  }
+  const pageSeo = await getPageSeo('blog');
+
+  const title = pageSeo?.meta_title || DEFAULT_SEO.blog.title;
+  const description = pageSeo?.meta_description || DEFAULT_SEO.blog.description;
+  const ogImage = pageSeo?.og_image || DEFAULT_SEO.default_og_image;
+
   return {
-    title: defaultBlogMeta.title,
-    description: defaultBlogMeta.description,
+    title,
+    description,
     alternates: { canonical: `${baseUrl}/blog` },
     openGraph: {
-      title: defaultBlogMeta.title,
-      description: defaultBlogMeta.description,
+      title: pageSeo?.og_title || title,
+      description,
       url: `${baseUrl}/blog`,
       type: 'website',
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
