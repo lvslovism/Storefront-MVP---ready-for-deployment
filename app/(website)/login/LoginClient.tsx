@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import PasskeyLoginButton from '@/components/auth/PasskeyLoginButton';
 
 // ─── Constants ───
 const GOLD = '#D4AF37';
@@ -860,6 +861,12 @@ export default function LoginClient({ redirectTo }: LoginClientProps) {
               <>
                 {mode !== 'forgot' && (
                   <>
+                    {mode === 'login' && (
+                      <>
+                        <PasskeyLoginButton redirectTo={redirectTo} />
+                        <GoldDivider text="或" />
+                      </>
+                    )}
                     <button
                       onClick={handleLineLogin}
                       className="w-full py-4 px-5 border-none rounded-[10px] text-base font-semibold cursor-pointer flex items-center justify-center gap-2.5 transition-all duration-200 hover:-translate-y-0.5"
