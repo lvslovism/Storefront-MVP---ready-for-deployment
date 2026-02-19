@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import type { Session } from '@/lib/auth';
 import { useCart } from '@/components/CartProvider';
+import PasskeyManager from '@/components/auth/PasskeyManager';
 
 // ─── Constants ───
 const GOLD = '#D4AF37';
@@ -1249,6 +1250,9 @@ function ProfileTab({ showToast, session, addresses, setAddresses, cvsStores, se
           </div>
         )}
       </Modal>
+
+      {/* Passkey Manager */}
+      <PasskeyManager />
 
       {/* Delete Account */}
       <div className="mt-10 pt-6 border-t border-white/[0.06]">
