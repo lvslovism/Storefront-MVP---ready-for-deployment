@@ -34,7 +34,10 @@ export default function PasskeyManager() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    isWebAuthnSupported().then(setSupported);
+    isWebAuthnSupported().then((val) => {
+      console.log('[PasskeyManager] supported:', val);
+      setSupported(val);
+    });
   }, []);
 
   const fetchCredentials = useCallback(async () => {
