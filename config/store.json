@@ -31,7 +31,7 @@
     "cvsLogistics": true,
     "homeDelivery": true,
     "linePay": false,
-    "memberSystem": false
+    "memberSystem": true
   },
   "shipping": {
     "freeShippingThreshold": 1000,
