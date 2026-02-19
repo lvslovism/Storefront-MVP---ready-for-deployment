@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         user_type: 'customer',
         user_id: customerId,
         credential_id: credential.id,
-        public_key: Buffer.from(credential.publicKey),
+        public_key: '\\x' + Buffer.from(credential.publicKey).toString('hex'),
         counter: credential.counter,
         device_name: deviceName || '未命名裝置',
         device_type: credentialDeviceType || 'platform',

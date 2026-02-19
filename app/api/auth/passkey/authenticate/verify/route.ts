@@ -8,6 +8,38 @@ import { getSupabase, getMerchantCode } from '@/lib/supabase';
 const RP_ID = process.env.WEBAUTHN_RP_ID || 'minjie0326.com';
 const ORIGIN = process.env.WEBAUTHN_ORIGIN || 'https://shop.minjie0326.com';
 
+/**
+ * Supabase BYTEA 欄位可能回傳多種格式，統一轉成 Uint8Array
+ */
+function parsePublicKey(raw: unknown): Uint8Array {
+  if (raw instanceof Uint8Array) return raw;
+  if (Buffer.isBuffer(raw)) return new Uint8Array(raw);
+  if (typeof raw === 'string') {
+    // Hex format: \x0402ab... or 0x0402ab...
+    if (raw.startsWith('\\x') || raw.startsWith('0x')) {
+      const hex = raw.replace(/^(\\x|0x)/, '');
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+      }
+      return bytes;
+    }
+    // Base64 format
+    return new Uint8Array(Buffer.from(raw, 'base64'));
+  }
+  // Array-like object (e.g. { type: 'Buffer', data: [...] })
+  if (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'type' in (raw as Record<string, unknown>) &&
+    (raw as Record<string, unknown>).type === 'Buffer' &&
+    Array.isArray((raw as Record<string, unknown>).data)
+  ) {
+    return new Uint8Array((raw as { data: number[] }).data);
+  }
+  throw new Error('Unknown public_key format');
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -48,8 +80,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '驗證已過期，請重新操作' }, { status: 400 });
     }
 
-    // public_key 從 DB BYTEA 轉 Uint8Array
-    const publicKeyBytes = Buffer.from(credRow.public_key, 'base64');
+    // public_key 從 DB BYTEA 轉 Uint8Array（處理 hex / base64 / Buffer 等格式）
+    const publicKey = parsePublicKey(credRow.public_key);
 
     const verification = await verifyAuthenticationResponse({
       response,
@@ -58,7 +90,7 @@ export async function POST(request: NextRequest) {
       expectedRPID: RP_ID,
       credential: {
         id: credRow.credential_id,
-        publicKey: new Uint8Array(publicKeyBytes),
+        publicKey,
         counter: Number(credRow.counter),
         transports: credRow.transports as AuthenticatorTransport[] | undefined,
       },
