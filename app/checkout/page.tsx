@@ -9,6 +9,7 @@ import { formatPrice, config, shipping } from '@/lib/config';
 import { createCheckout, getCvsMap, getCvsSelection, CVS_NAMES, CvsSelection } from '@/lib/gateway';
 import { initPaymentForCart } from '@/lib/medusa';
 import CreditsSelectorV2 from '@/components/checkout/CreditsSelectorV2';
+import { trackBeginCheckout } from '@/lib/analytics';
 
 type ShippingMethod = 'cvs' | 'home';
 type CvsType = 'UNIMARTC2C' | 'FAMIC2C' | 'HILIFEC2C';
@@ -246,6 +247,19 @@ export default function CheckoutPage() {
       }
     };
   }, []);
+
+  // ── GA4 + Pixel: begin_checkout ──
+  useEffect(() => {
+    if (!cart?.items?.length) return;
+    const items = cart.items.map((item: any) => ({
+      item_id: item.variant_id || item.id,
+      item_name: item.title || item.product_title || '',
+      price: Math.round(item.unit_price || 0),
+      quantity: item.quantity,
+    }));
+    trackBeginCheckout(items, subtotal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart?.id]);
 
   // 檢查 LINE 登入狀態
   useEffect(() => {

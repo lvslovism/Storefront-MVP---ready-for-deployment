@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageGallery from '@/components/website/ImageGallery';
@@ -8,6 +8,7 @@ import VariantSelector from '@/components/website/VariantSelector';
 import QuantitySelector from '@/components/website/QuantitySelector';
 import { useCart } from '@/components/CartProvider';
 import { formatPrice, config } from '@/lib/config';
+import { trackViewItem, trackAddToCart } from '@/lib/analytics';
 
 interface ProductDetailClientProps {
   product: any;
@@ -108,6 +109,20 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   // 是否可加入購物車（需選擇規格 + 有庫存）
   const canAdd = (product.variants?.length === 1 || selectedVariant !== null) && !isOutOfStock;
 
+  // ── GA4 + Pixel: view_item ──
+  useEffect(() => {
+    const variant = product.variants?.[0];
+    const p = variant?.calculated_price?.calculated_amount;
+    if (p) {
+      trackViewItem({
+        item_id: product.handle || product.id,
+        item_name: product.title || '',
+        price: Math.round(p),
+        quantity: 1,
+      });
+    }
+  }, [product]);
+
   // 處理選項變更
   const handleOptionSelect = (optionId: string, value: string) => {
     setSelectedOptions(prev => ({ ...prev, [optionId]: value }));
@@ -123,6 +138,17 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     try {
       setIsAdding(true);
       await addItem(variant.id, quantity);
+
+      // ── GA4 + Pixel: add_to_cart ──
+      const unitPrice = variant.calculated_price?.calculated_amount;
+      if (unitPrice) {
+        trackAddToCart({
+          item_id: variant.id,
+          item_name: product.title || '',
+          price: Math.round(unitPrice),
+          quantity,
+        });
+      }
 
       // 回饋動畫
       setAddedFeedback(true);

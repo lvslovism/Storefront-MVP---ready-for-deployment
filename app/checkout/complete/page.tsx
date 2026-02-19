@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { trackPurchase } from '@/lib/analytics';
 
 // === 工具函數 ===
 
@@ -313,6 +314,29 @@ function CheckoutCompleteContent() {
       }
     }
   }
+
+  // ── GA4 + Pixel: purchase ──
+  const hasFiredPurchaseRef = useRef(false);
+  useEffect(() => {
+    if (!order || hasFiredPurchaseRef.current) return;
+    hasFiredPurchaseRef.current = true;
+
+    const items = (order.items || []).map((item: any) => ({
+      item_id: item.variant_id || item.id,
+      item_name: item.title || item.product_title || '',
+      price: Math.round(item.unit_price || 0),
+      quantity: item.quantity,
+    }));
+    const value = order.summary?.current_order_total ?? order.total ?? 0;
+    const shippingTotal = order.shipping_total ?? 0;
+
+    trackPurchase(
+      order.id || order.display_id?.toString() || '',
+      items,
+      Math.round(value),
+      Math.round(shippingTotal),
+    );
+  }, [order]);
 
   // === 顯示輔助函數 ===
 
