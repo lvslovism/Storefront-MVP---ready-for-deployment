@@ -21,7 +21,6 @@ export async function isWebAuthnSupported(): Promise<boolean> {
 export async function isConditionalUISupported(): Promise<boolean> {
   if (!await isWebAuthnSupported()) return false;
   try {
-    // @ts-expect-error - isConditionalMediationAvailable may not exist on all browsers
     return await PublicKeyCredential.isConditionalMediationAvailable?.() ?? false;
   } catch {
     return false;

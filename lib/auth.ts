@@ -38,7 +38,7 @@ export interface Session {
   customer_id: string | null;
   linked_at: string;
   // 登入方式識別
-  auth_method: 'line' | 'email';
+  auth_method: 'line' | 'email' | 'passkey';
 }
 
 export interface SessionResponse {
@@ -50,7 +50,7 @@ export interface SessionResponse {
   picture_url?: string | null;
   customer_id?: string | null;
   linked_at?: string;
-  auth_method?: 'line' | 'email';
+  auth_method?: 'line' | 'email' | 'passkey';
 }
 
 // ============ 密碼工具函式 ============

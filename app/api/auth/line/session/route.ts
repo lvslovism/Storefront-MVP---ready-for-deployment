@@ -16,7 +16,7 @@ interface Session {
   picture_url: string | null;
   customer_id: string | null;
   linked_at: string;
-  auth_method?: 'line' | 'email';
+  auth_method?: 'line' | 'email' | 'passkey';
 }
 
 // GET: 取得當前 session
