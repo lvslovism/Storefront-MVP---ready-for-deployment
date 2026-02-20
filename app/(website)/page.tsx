@@ -3,6 +3,7 @@ import { getProducts, getProductsByIds } from '@/lib/medusa';
 import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings } from '@/lib/cms';
 import { getMotionTheme } from '@/lib/motion';
 import ImageSection from '@/components/cms/ImageSection';
+import AnimatedSection from '@/components/website/sections/AnimatedSection';
 import FeaturedProductsSection from '@/components/website/sections/FeaturedProductsSection';
 import TrustNumbersSection from '@/components/website/sections/TrustNumbersSection';
 import ProductWallSection from '@/components/website/sections/ProductWallSection';
@@ -153,16 +154,24 @@ export default async function HomePage() {
       />
 
       {/* ===== 區塊 4: 會員制度表 ===== */}
-      <ImageSection banner={banners.membership_table} />
+      <AnimatedSection theme={theme} animation="fade_up">
+        <ImageSection banner={banners.membership_table} />
+      </AnimatedSection>
 
       {/* ===== 區塊 5: 新春滿額禮 / 當季活動 ===== */}
-      <ImageSection banner={banners.spring_promo} />
+      <AnimatedSection theme={theme} animation="fade_up">
+        <ImageSection banner={banners.spring_promo} />
+      </AnimatedSection>
 
       {/* ===== 區塊 6: 無卡分期 ===== */}
-      <ImageSection banner={banners.installment_info} />
+      <AnimatedSection theme={theme} animation="fade_up">
+        <ImageSection banner={banners.installment_info} />
+      </AnimatedSection>
 
       {/* ===== 區塊 7: 購物流程圖 ===== */}
-      <ImageSection banner={banners.shopping_flow} />
+      <AnimatedSection theme={theme} animation="fade_up">
+        <ImageSection banner={banners.shopping_flow} />
+      </AnimatedSection>
 
       {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
       <FeaturedProductsSection
@@ -192,7 +201,9 @@ export default async function HomePage() {
       )}
 
       {/* ===== 區塊 10: 品牌社群 + 數據統計 ===== */}
-      <ImageSection banner={banners.community_cta} />
+      <AnimatedSection theme={theme} animation="fade_up">
+        <ImageSection banner={banners.community_cta} />
+      </AnimatedSection>
 
       {/* ===== 區塊 11: 信任數字（CMS 驅動 + fallback + 動畫） ===== */}
       <TrustNumbersSection theme={theme} data={trustNumbers} />
