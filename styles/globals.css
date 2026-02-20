@@ -190,3 +190,78 @@ section:first-child p {
 section:first-child .flex {
   animation: fade-in 1s ease 0.8s both;
 }
+
+/* ========================================
+   Motion Theme CSS Variables
+   ======================================== */
+:root {
+  --motion-duration: 0.6s;
+  --motion-distance: 20px;
+  --motion-stagger: 0.12s;
+  --motion-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* ========================================
+   L1 CSS Animations（不依賴 JS）
+   ======================================== */
+@keyframes kenBurns {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.1); }
+  50%      { box-shadow: 0 0 25px rgba(212,175,55,0.25); }
+}
+
+@keyframes marqueeScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* Ken Burns 用在 Banner 背景圖 */
+.animate-ken-burns {
+  animation: kenBurns 18s ease-in-out infinite;
+}
+
+/* CTA 按鈕脈衝 */
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* 跑馬燈 */
+.animate-marquee {
+  animation: marqueeScroll 40s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* 浮動效果 */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Hover 浮起 */
+.hover-lift {
+  transition: transform var(--motion-duration) var(--motion-ease),
+              box-shadow var(--motion-duration) var(--motion-ease);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(212,175,55,0.12);
+}
+
+/* 手機版 disable hover 效果 */
+@media (hover: none) {
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
