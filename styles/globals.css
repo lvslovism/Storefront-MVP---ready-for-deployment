@@ -265,3 +265,31 @@ section:first-child .flex {
     box-shadow: none;
   }
 }
+
+/* ========================================
+   降維特效：流體背景 (Fluid Background)
+   ======================================== */
+@keyframes fluid-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(60px, 40px); }
+  66%      { transform: translate(-30px, 70px); }
+}
+@keyframes fluid-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(-50px, -30px); }
+  66%      { transform: translate(40px, -60px); }
+}
+@keyframes fluid-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(30px, -50px); }
+  66%      { transform: translate(-60px, 20px); }
+}
+.animate-fluid-1 {
+  animation: fluid-drift-1 15s ease-in-out infinite;
+}
+.animate-fluid-2 {
+  animation: fluid-drift-2 20s ease-in-out infinite;
+}
+.animate-fluid-3 {
+  animation: fluid-drift-3 25s ease-in-out infinite;
+}

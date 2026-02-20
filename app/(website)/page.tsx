@@ -7,6 +7,7 @@ import AnimatedSection from '@/components/website/sections/AnimatedSection';
 import FeaturedProductsSection from '@/components/website/sections/FeaturedProductsSection';
 import TrustNumbersSection from '@/components/website/sections/TrustNumbersSection';
 import ProductWallSection from '@/components/website/sections/ProductWallSection';
+import FluidBackground from '@/components/website/effects/FluidBackground';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
@@ -147,11 +148,16 @@ export default async function HomePage() {
   return (
     <div style={{ background: '#0a0a0a' }}>
       {/* ===== 區塊 3: Hero 品牌區 ===== */}
-      <ImageSection
-        banner={banners.hero_brand}
-        priority={true}
-        hideWhenEmpty={false}
-      />
+      <div className="relative">
+        <FluidBackground />
+        <div className="relative z-10">
+          <ImageSection
+            banner={banners.hero_brand}
+            priority={true}
+            hideWhenEmpty={false}
+          />
+        </div>
+      </div>
 
       {/* ===== 區塊 4: 會員制度表 ===== */}
       <AnimatedSection theme={theme} animation="fade_up">
