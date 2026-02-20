@@ -765,3 +765,26 @@ export async function getHomepageProductSettings(merchantCode: string = MERCHANT
     return defaults
   }
 }
+
+// ============ 頁面 Layout API ============
+
+/**
+ * 從 cms_page_layouts 讀取頁面 Layout JSON
+ * 表可能不存在或無資料，graceful fail → return null
+ */
+export async function getPageLayout(page: string = 'home', merchantCode: string = MERCHANT) {
+  try {
+    const { data, error } = await getSupabase()
+      .from('cms_page_layouts')
+      .select('layout')
+      .eq('merchant_code', merchantCode)
+      .eq('page', page)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !data?.layout?.sections) return null
+    return data.layout.sections
+  } catch {
+    return null
+  }
+}

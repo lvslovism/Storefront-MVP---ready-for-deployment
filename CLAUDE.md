@@ -115,3 +115,27 @@ Two authentication paths, both stored in Supabase:
 - API 必含輸入驗證
 - LINE webhook 需簽名驗證
 - CORS 限制已設定在 Next.js config
+
+## 設計系統（2026-02-20 新增）
+
+### 文件位置
+- 完整規格：docs/Storefront_Design_System_SDD_v1_0.md
+- 執行步驟：docs/Storefront_Design_System_Instructions.md
+- 設計範本索引：docs/Design_Reference_Index.md
+- 視覺設計稿：docs/designs/*.jsx（10 個互動式範本，僅供參考不可直接 import）
+
+### 核心架構
+- PageRenderer 依 Layout JSON 渲染頁面，Component Registry 映射版型到元件
+- AnimatedSection 包裝所有區塊，動畫參數從 MotionTheme 讀取，不寫死數值
+- 13 種版型元件放在 components/website/sections/
+- 降維特效元件放在 components/website/effects/
+- 動畫主題配置放在 lib/motion/
+
+### 開發規則
+- LIFF 頁面不載入 framer-motion
+- 只動 transform + opacity，永不動 layout 屬性
+- 每個元件做完就 npm run build 驗證
+- 圖片用 Next/Image + sizes，Hero 區加 priority
+- 手機版 hover 效果要 disable
+- 現有的資料讀取邏輯（getBanner, getSection 等）保留，不重寫
+```

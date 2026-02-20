@@ -1,10 +1,11 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
 import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings } from '@/lib/cms';
+import { getMotionTheme } from '@/lib/motion';
 import ImageSection from '@/components/cms/ImageSection';
-import FeaturedProducts from '@/components/cms/FeaturedProducts';
-import TrustNumbers from '@/components/cms/TrustNumbers';
-import ProductCard from '@/components/ProductCard';
+import FeaturedProductsSection from '@/components/website/sections/FeaturedProductsSection';
+import TrustNumbersSection from '@/components/website/sections/TrustNumbersSection';
+import ProductWallSection from '@/components/website/sections/ProductWallSection';
 import type { Metadata } from 'next';
 
 export const revalidate = 3600; // ISR: 1 小時
@@ -16,25 +17,6 @@ const PLACEMENT_LABELS: Record<string, string> = {
   'home_hot': '熱銷排行',
   'category_top': '分類精選',
 };
-
-// 動態欄數 CSS class（不可用 Tailwind 動態字串拼接）
-function getColumnClass(mobile: number, desktop: number): string {
-  const mobileWidths: Record<number, string> = {
-    1: 'w-[calc(100%-0px)]',
-    2: 'w-[calc(50%-8px)]',
-    3: 'w-[calc(33.333%-11px)]',
-  };
-  const desktopWidths: Record<number, string> = {
-    2: 'lg:w-[calc(50%-12px)]',
-    3: 'lg:w-[calc(33.333%-16px)]',
-    4: 'lg:w-[calc(25%-18px)]',
-    5: 'lg:w-[calc(20%-19px)]',
-    6: 'lg:w-[calc(16.666%-20px)]',
-  };
-  const mobileClass = mobileWidths[mobile] || mobileWidths[2];
-  const desktopClass = desktopWidths[desktop] || desktopWidths[4];
-  return `${mobileClass} ${desktopClass}`;
-}
 
 export async function generateMetadata(): Promise<Metadata> {
   const [pageSeo, globalSeo] = await Promise.all([
@@ -74,6 +56,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
+  // 讀取動畫主題
+  const theme = await getMotionTheme();
+
   // 並行請求：CMS 圖片 + placements + 信任數字 + 全部商品 + 排序 + 商品牆設定
   const [banners, placements, trustNumbers, allProductsResult, sortOrder, homepageSettings] = await Promise.all([
     getHomeBanners(),
@@ -180,7 +165,8 @@ export default async function HomePage() {
       <ImageSection banner={banners.shopping_flow} />
 
       {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
-      <FeaturedProducts
+      <FeaturedProductsSection
+        theme={theme}
         tabs={tabs}
         fallbackProducts={fallbackProducts}
         showViewAll={homepageSettings.show_view_all_button}
@@ -190,55 +176,26 @@ export default async function HomePage() {
 
       {/* ===== 區塊 9: 商品牆 — 由 CMS 設定控制 ===== */}
       {homepageSettings.show_product_wall && displayProducts.length > 0 && (
-        <section className="pt-6 pb-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            {/* 標題 */}
-            <div className="text-center mb-10">
-              <p className="text-xs tracking-[4px] mb-3" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                ─── {homepageSettings.wall_subtitle} ───
-              </p>
-              <h2 className="text-2xl md:text-3xl font-light tracking-wider" style={{ color: '#D4AF37' }}>
-                {homepageSettings.wall_title}
-              </h2>
-            </div>
-
-            {/* 商品網格 — 動態欄數 */}
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-              {displayProducts.map((product: any) => (
-                <div
-                  key={product.id}
-                  className={getColumnClass(homepageSettings.wall_columns_mobile, homepageSettings.wall_columns_desktop)}
-                  style={{ maxWidth: '300px' }}
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </div>
-
-            {/* 查看全部按鈕 */}
-            {homepageSettings.show_view_all_button && (
-              <div className="text-center mt-10">
-                <a
-                  href={homepageSettings.view_all_url || '/products'}
-                  className="inline-block px-8 py-3 border text-sm tracking-wider transition-all duration-300"
-                  style={{
-                    borderColor: '#D4AF37',
-                    color: '#D4AF37',
-                  }}
-                >
-                  {homepageSettings.view_all_text || '查看全部商品'}
-                </a>
-              </div>
-            )}
-          </div>
-        </section>
+        <ProductWallSection
+          theme={theme}
+          data={{
+            title: homepageSettings.wall_title,
+            subtitle: homepageSettings.wall_subtitle,
+            products: displayProducts,
+            columns_mobile: homepageSettings.wall_columns_mobile,
+            columns_desktop: homepageSettings.wall_columns_desktop,
+            show_view_all: homepageSettings.show_view_all_button,
+            view_all_text: homepageSettings.view_all_text,
+            view_all_url: homepageSettings.view_all_url,
+          }}
+        />
       )}
 
       {/* ===== 區塊 10: 品牌社群 + 數據統計 ===== */}
       <ImageSection banner={banners.community_cta} />
 
-      {/* ===== 區塊 11: 信任數字（CMS 驅動 + fallback） ===== */}
-      <TrustNumbers data={trustNumbers} />
+      {/* ===== 區塊 11: 信任數字（CMS 驅動 + fallback + 動畫） ===== */}
+      <TrustNumbersSection theme={theme} data={trustNumbers} />
 
     </div>
   );
