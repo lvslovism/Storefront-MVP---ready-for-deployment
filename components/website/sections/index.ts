@@ -1,0 +1,13 @@
+export { default as SingleBannerSection } from './SingleBannerSection';
+export { default as CarouselSection } from './CarouselSection';
+export { default as TrustNumbersSection } from './TrustNumbersSection';
+export { default as ImageTextSection } from './ImageTextSection';
+export { default as CTABannerSection } from './CTABannerSection';
+export { default as MarqueeSection } from './MarqueeSection';
+export { default as CardRowSection } from './CardRowSection';
+export { default as VideoSection } from './VideoSection';
+export { default as DuoBannerSection } from './DuoBannerSection';
+export { default as GridBannerSection } from './GridBannerSection';
+export { default as CountdownSection } from './CountdownSection';
+export { default as FeaturedProductsSection } from './FeaturedProductsSection';
+export { default as ProductWallSection } from './ProductWallSection';
