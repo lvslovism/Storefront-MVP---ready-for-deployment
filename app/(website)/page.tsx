@@ -1,7 +1,7 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
 import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings, getPageLayout } from '@/lib/cms';
-import { getMotionTheme } from '@/lib/motion';
+import { getMotionTheme, getMotionExtras } from '@/lib/motion';
 import ImageSection from '@/components/cms/ImageSection';
 import AnimatedSection from '@/components/website/sections/AnimatedSection';
 import FeaturedProductsSection from '@/components/website/sections/FeaturedProductsSection';
@@ -58,8 +58,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  // 讀取動畫主題
-  const theme = await getMotionTheme();
+  // 讀取動畫主題 + 特效開關
+  const [theme, motionExtras] = await Promise.all([
+    getMotionTheme(),
+    getMotionExtras(),
+  ]);
 
   // 並行請求：CMS 圖片 + placements + 信任數字 + 全部商品 + 排序 + 商品牆設定
   const [banners, placements, trustNumbers, allProductsResult, sortOrder, homepageSettings] = await Promise.all([
@@ -166,7 +169,7 @@ export default async function HomePage() {
   const SECTION_RENDERERS: Record<string, () => React.ReactNode> = {
     hero: () => (
       <div className="relative">
-        <FluidBackground />
+        {motionExtras.includes('fluid_bg') && <FluidBackground />}
         <div className="relative z-10">
           <ImageSection
             banner={banners.hero_brand}

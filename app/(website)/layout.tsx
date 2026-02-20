@@ -4,6 +4,7 @@ import WebsiteFooter from '@/components/website/Footer';
 import AnnouncementBarServer from '@/components/cms/AnnouncementBarServer';
 import Analytics from '@/components/Analytics';
 import { getMerchantSettings } from '@/lib/cms';
+import { getMotionExtras } from '@/lib/motion';
 import CursorGlow from '@/components/website/effects/CursorGlow';
 
 export default async function WebsiteLayout({
@@ -11,11 +12,16 @@ export default async function WebsiteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getMerchantSettings();
+  const [settings, motionExtras] = await Promise.all([
+    getMerchantSettings(),
+    getMotionExtras(),
+  ]);
+
+  const showCursorGlow = motionExtras.includes('cursor_glow');
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-gray-100">
-      <CursorGlow />
+      {showCursorGlow && <CursorGlow />}
       <Analytics
         gaMeasurementId={settings?.ga_measurement_id}
         metaPixelId={settings?.meta_pixel_id}

@@ -19,15 +19,21 @@ export async function getMotionTheme(merchantCode?: string): Promise<MotionTheme
   }
 }
 
+/** DB 讀不到時的預設特效清單 */
+const DEFAULT_EXTRAS = ['fluid_bg', 'cursor_glow'];
+
 /**
  * 讀取啟用的降維特效列表
+ * DB 沒設定時 fallback 到 DEFAULT_EXTRAS
  */
 export async function getMotionExtras(merchantCode?: string): Promise<string[]> {
   try {
     const { getMerchantSettings } = await import('@/lib/cms');
     const settings = await getMerchantSettings(merchantCode);
-    return settings?.settings?.motion_extras || [];
+    // 若 motion_extras 欄位存在（含空陣列）就用 DB 值，否則用預設
+    const extras = settings?.settings?.motion_extras;
+    return Array.isArray(extras) ? extras : DEFAULT_EXTRAS;
   } catch {
-    return [];
+    return DEFAULT_EXTRAS;
   }
 }
