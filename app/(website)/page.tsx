@@ -151,10 +151,10 @@ export default async function HomePage() {
   // ===== 從 DB 讀取區塊順序 =====
   const layoutSections = await getPageLayout('home');
 
-  // 預設順序（DB 讀不到時 fallback）
+  // 預設順序（DB 讀不到時 fallback）— key = banner placement
   const DEFAULT_ORDER = [
-    'hero', 'member_table', 'promo_event', 'installment',
-    'process', 'featured', 'products', 'social', 'trust',
+    'hero_brand', 'membership_table', 'spring_promo', 'installment_info',
+    'shopping_flow', 'featured', 'products', 'community_cta', 'trust',
   ];
 
   // 決定渲染順序：DB 驅動 or 預設
@@ -165,38 +165,38 @@ export default async function HomePage() {
         .map((s: any) => s.key)
     : DEFAULT_ORDER;
 
-  // ===== 每個 section key 對應的渲染邏輯 =====
+  // ===== 每個 section key 對應的渲染邏輯（key = banner placement）=====
   const SECTION_RENDERERS: Record<string, () => React.ReactNode> = {
-    hero: () => (
+    hero_brand: () => (
       <div className="relative">
         {motionExtras.includes('fluid_bg') && <FluidBackground />}
         <div className="relative z-10">
           <ImageSection
-            banner={banners.hero_brand}
+            banner={banners['hero_brand']}
             priority={true}
             hideWhenEmpty={false}
           />
         </div>
       </div>
     ),
-    member_table: () => (
+    membership_table: () => (
       <AnimatedSection theme={theme} animation="fade_up">
-        <ImageSection banner={banners.membership_table} />
+        <ImageSection banner={banners['membership_table']} />
       </AnimatedSection>
     ),
-    promo_event: () => (
+    spring_promo: () => (
       <AnimatedSection theme={theme} animation="fade_up">
-        <ImageSection banner={banners.spring_promo} />
+        <ImageSection banner={banners['spring_promo']} />
       </AnimatedSection>
     ),
-    installment: () => (
+    installment_info: () => (
       <AnimatedSection theme={theme} animation="fade_up">
-        <ImageSection banner={banners.installment_info} />
+        <ImageSection banner={banners['installment_info']} />
       </AnimatedSection>
     ),
-    process: () => (
+    shopping_flow: () => (
       <AnimatedSection theme={theme} animation="fade_up">
-        <ImageSection banner={banners.shopping_flow} />
+        <ImageSection banner={banners['shopping_flow']} />
       </AnimatedSection>
     ),
     featured: () => (
@@ -226,9 +226,9 @@ export default async function HomePage() {
         />
       ) : null
     ),
-    social: () => (
+    community_cta: () => (
       <AnimatedSection theme={theme} animation="fade_up">
-        <ImageSection banner={banners.community_cta} />
+        <ImageSection banner={banners['community_cta']} />
       </AnimatedSection>
     ),
     trust: () => (
