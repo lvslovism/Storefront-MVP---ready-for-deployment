@@ -1,6 +1,6 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
-import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings } from '@/lib/cms';
+import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings, getPageLayout } from '@/lib/cms';
 import { getMotionTheme } from '@/lib/motion';
 import ImageSection from '@/components/cms/ImageSection';
 import AnimatedSection from '@/components/website/sections/AnimatedSection';
@@ -145,9 +145,26 @@ export default async function HomePage() {
 
   console.log('[Home] All products:', allProducts.length, 'Featured:', featuredProductIdSet.size, 'Wall:', displayProducts.length, 'Show wall:', homepageSettings.show_product_wall);
 
-  return (
-    <div style={{ background: '#0a0a0a' }}>
-      {/* ===== 區塊 3: Hero 品牌區 ===== */}
+  // ===== 從 DB 讀取區塊順序 =====
+  const layoutSections = await getPageLayout('home');
+
+  // 預設順序（DB 讀不到時 fallback）
+  const DEFAULT_ORDER = [
+    'hero', 'member_table', 'promo_event', 'installment',
+    'process', 'featured', 'products', 'social', 'trust',
+  ];
+
+  // 決定渲染順序：DB 驅動 or 預設
+  const orderedKeys: string[] = layoutSections
+    ? layoutSections
+        .filter((s: any) => s.is_active !== false)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+        .map((s: any) => s.key)
+    : DEFAULT_ORDER;
+
+  // ===== 每個 section key 對應的渲染邏輯 =====
+  const SECTION_RENDERERS: Record<string, () => React.ReactNode> = {
+    hero: () => (
       <div className="relative">
         <FluidBackground />
         <div className="relative z-10">
@@ -158,28 +175,28 @@ export default async function HomePage() {
           />
         </div>
       </div>
-
-      {/* ===== 區塊 4: 會員制度表 ===== */}
+    ),
+    member_table: () => (
       <AnimatedSection theme={theme} animation="fade_up">
         <ImageSection banner={banners.membership_table} />
       </AnimatedSection>
-
-      {/* ===== 區塊 5: 新春滿額禮 / 當季活動 ===== */}
+    ),
+    promo_event: () => (
       <AnimatedSection theme={theme} animation="fade_up">
         <ImageSection banner={banners.spring_promo} />
       </AnimatedSection>
-
-      {/* ===== 區塊 6: 無卡分期 ===== */}
+    ),
+    installment: () => (
       <AnimatedSection theme={theme} animation="fade_up">
         <ImageSection banner={banners.installment_info} />
       </AnimatedSection>
-
-      {/* ===== 區塊 7: 購物流程圖 ===== */}
+    ),
+    process: () => (
       <AnimatedSection theme={theme} animation="fade_up">
         <ImageSection banner={banners.shopping_flow} />
       </AnimatedSection>
-
-      {/* ===== 區塊 8: 商品區（CMS 驅動分類 Tabs + 精選商品） ===== */}
+    ),
+    featured: () => (
       <FeaturedProductsSection
         theme={theme}
         tabs={tabs}
@@ -188,9 +205,9 @@ export default async function HomePage() {
         sectionTitle={homepageSettings.featured_title}
         sectionSubtitle={homepageSettings.featured_subtitle}
       />
-
-      {/* ===== 區塊 9: 商品牆 — 由 CMS 設定控制 ===== */}
-      {homepageSettings.show_product_wall && displayProducts.length > 0 && (
+    ),
+    products: () => (
+      homepageSettings.show_product_wall && displayProducts.length > 0 ? (
         <ProductWallSection
           theme={theme}
           data={{
@@ -204,16 +221,28 @@ export default async function HomePage() {
             view_all_url: homepageSettings.view_all_url,
           }}
         />
-      )}
-
-      {/* ===== 區塊 10: 品牌社群 + 數據統計 ===== */}
+      ) : null
+    ),
+    social: () => (
       <AnimatedSection theme={theme} animation="fade_up">
         <ImageSection banner={banners.community_cta} />
       </AnimatedSection>
-
-      {/* ===== 區塊 11: 信任數字（CMS 驅動 + fallback + 動畫） ===== */}
+    ),
+    trust: () => (
       <TrustNumbersSection theme={theme} data={trustNumbers} />
+    ),
+  };
 
+  // ===== 按 DB 順序渲染 =====
+  return (
+    <div style={{ background: '#0a0a0a' }}>
+      {orderedKeys.map(key => {
+        const render = SECTION_RENDERERS[key];
+        if (!render) return null;
+        const content = render();
+        if (!content) return null;
+        return <div key={key}>{content}</div>;
+      })}
     </div>
   );
 }
