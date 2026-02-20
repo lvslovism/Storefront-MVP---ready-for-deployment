@@ -101,7 +101,7 @@ export default function TrustNumbersSection({ theme, data }: Props) {
     >
       <StaggerContainer
         theme={theme}
-        className="max-w-4xl mx-auto px-4 grid grid-cols-3 gap-8 text-center"
+        className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 text-center"
       >
         {items.map((item, i) => (
           <StaggerItem key={i} theme={theme}>
