@@ -1113,7 +1113,7 @@ if (paymentMethod === 'cod') {
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* 收件人資訊 */}
-            <section className="card p-6">
+            <section className="card p-4 sm:p-6">
               <h2 className="text-lg font-bold mb-4">收件人資訊</h2>
               <div className="grid gap-4">
                 <div>
@@ -1160,7 +1160,7 @@ if (paymentMethod === 'cod') {
             </section>
 
             {/* 物流方式 */}
-            <section className="card p-6">
+            <section className="card p-4 sm:p-6">
               <h2 className="text-lg font-bold mb-4">物流方式</h2>
 
               {/* 物流選項 */}
@@ -1442,7 +1442,7 @@ if (paymentMethod === 'cod') {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">郵遞區號</label>
                       <input
