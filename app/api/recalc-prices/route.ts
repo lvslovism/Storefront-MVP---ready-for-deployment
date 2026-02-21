@@ -118,10 +118,15 @@ export async function POST(req: NextRequest) {
             );
             discountLabel = `省$${Number(rule.discount_value)}`;
           } else {
-            // percentage
+            // percentage — 台灣慣用：10% off = 9折，15% off = 8.5折
             const pct = Number(rule.discount_value);
             displayPrice = Math.round(originalPrice * (1 - pct / 100));
-            discountLabel = `${Math.round(100 - pct)}折`;
+            const payPercent = 100 - pct; // 實付百分比
+            if (payPercent % 10 === 0) {
+              discountLabel = `${payPercent / 10}折`;
+            } else {
+              discountLabel = `${(payPercent / 10).toFixed(1)}折`;
+            }
           }
 
           upsertRows.push({

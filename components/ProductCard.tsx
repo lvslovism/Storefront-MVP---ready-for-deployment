@@ -74,7 +74,10 @@ export default function ProductCard({ product, priceDisplay }: ProductCardProps)
 
           {/* 折扣標籤 */}
           {showDiscount && (
-            <div className="absolute top-2 left-2 bg-gold text-black text-xs px-2 py-1 rounded font-medium">
+            <div
+              className="absolute top-2 left-2 text-black text-sm px-3 py-1 rounded-full font-bold shadow-md"
+              style={{ background: 'linear-gradient(135deg, #D4AF37, #B8962E)' }}
+            >
               {discountBadge}
             </div>
           )}
