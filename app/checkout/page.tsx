@@ -1106,6 +1106,37 @@ if (paymentMethod === 'cod') {
 
   return (
     <div className="checkout-page container mx-auto px-4 py-8 max-w-full">
+      <div id="debug-overflow" style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        background: 'red',
+        color: 'white',
+        fontSize: '10px',
+        padding: '4px',
+        zIndex: 9999,
+        display: 'none'
+      }} />
+      <script dangerouslySetInnerHTML={{ __html: `
+        setTimeout(function() {
+          var debug = document.getElementById('debug-overflow');
+          var results = [];
+          document.querySelectorAll('*').forEach(function(el) {
+            var rect = el.getBoundingClientRect();
+            if (rect.right > window.innerWidth + 1) {
+              results.push(el.tagName + '.' + el.className.split(' ').slice(0,3).join('.') + ' -> right:' + Math.round(rect.right) + ' (vw:' + window.innerWidth + ')');
+            }
+          });
+          if (results.length) {
+            debug.style.display = 'block';
+            debug.innerHTML = 'OVERFLOW: ' + results.join(' | ');
+          } else {
+            debug.style.display = 'block';
+            debug.innerHTML = 'NO OVERFLOW (vw:' + window.innerWidth + ', body:' + document.body.scrollWidth + ', html:' + document.documentElement.scrollWidth + ')';
+          }
+        }, 2000);
+      `}} />
       <h1 className="text-2xl font-bold mb-8">結帳</h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
