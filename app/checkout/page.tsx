@@ -1496,7 +1496,7 @@ if (paymentMethod === 'cod') {
 
         {/* 右側：訂單摘要 */}
         <div className="lg:col-span-1">
-          <div className="card order-summary p-6 sticky top-24">
+          <div className="card order-summary p-4 sm:p-6 sticky top-24 overflow-hidden w-full min-w-0">
             <h2 className="text-lg font-bold mb-4">訂單摘要</h2>
 
             {/* 商品列表 */}
@@ -1525,13 +1525,13 @@ if (paymentMethod === 'cod') {
 
             {/* 金額明細 */}
             <div className="space-y-2 text-sm border-t pt-4">
-              <div className="flex justify-between">
-                <span>商品小計</span>
-                <span>{formatPrice(subtotal)}</span>
+              <div className="flex justify-between min-w-0">
+                <span className="min-w-0 truncate">商品小計</span>
+                <span className="shrink-0 whitespace-nowrap ml-2">{formatPrice(subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>運費</span>
-                <span>
+              <div className="flex justify-between min-w-0">
+                <span className="min-w-0 truncate">運費</span>
+                <span className="shrink-0 whitespace-nowrap ml-2">
                   {shippingFee === 0 ? (
                     <span className="text-green-600">免運</span>
                   ) : (
@@ -1545,13 +1545,13 @@ if (paymentMethod === 'cod') {
                 <label className="block text-sm text-gray-400 mb-2">折扣碼</label>
                 {promoApplied ? (
                   <div
-                    className="flex items-center justify-between p-3 rounded-lg"
+                    className="flex items-center justify-between p-3 rounded-lg min-w-0"
                     style={{
                       background: 'rgba(212, 175, 55, 0.1)',
                       border: '1px solid rgba(212, 175, 55, 0.3)',
                     }}
                   >
-                    <div>
+                    <div className="min-w-0 truncate">
                       <span style={{ color: '#D4AF37', fontWeight: 600 }}>✓ {promoApplied.code}</span>
                       <span className="text-gray-400 text-sm ml-2">
                         已折抵 {formatPrice(promoDiscountAmount)}
@@ -1560,19 +1560,19 @@ if (paymentMethod === 'cod') {
                     <button
                       type="button"
                       onClick={removePromoCode}
-                      className="text-red-400 text-sm hover:text-red-300"
+                      className="text-red-400 text-sm hover:text-red-300 shrink-0 ml-2"
                     >
                       移除
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 min-w-0">
                     <input
                       type="text"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                       placeholder="輸入折扣碼"
-                      className="flex-1 px-3 py-2 rounded-lg text-sm"
+                      className="flex-1 min-w-0 px-3 py-2 rounded-lg text-sm"
                       style={{
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -1584,7 +1584,7 @@ if (paymentMethod === 'cod') {
                       type="button"
                       onClick={applyPromoCode}
                       disabled={promoLoading || !promoCode.trim()}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                       style={{
                         background: promoCode.trim() ? '#D4AF37' : '#333',
                         color: promoCode.trim() ? '#000' : '#666',
@@ -1599,17 +1599,17 @@ if (paymentMethod === 'cod') {
 
               {/* 滿額自動折扣顯示（只有達門檻才顯示）*/}
               {autoDiscountAmount > 0 && subtotal >= AUTO_DISCOUNT_CONFIG.threshold && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: '#D4AF37' }}>🎉 滿額折扣</span>
-                  <span style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscountAmount)}</span>
+                <div className="flex justify-between text-sm min-w-0">
+                  <span className="min-w-0 truncate" style={{ color: '#D4AF37' }}>🎉 滿額折扣</span>
+                  <span className="shrink-0 whitespace-nowrap ml-2" style={{ color: '#D4AF37' }}>-{formatPrice(autoDiscountAmount)}</span>
                 </div>
               )}
 
               {/* 折扣碼金額顯示 */}
               {promoApplied && promoDiscountAmount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: '#D4AF37' }}>🏷️ 折扣碼 {promoApplied.code}</span>
-                  <span style={{ color: '#D4AF37' }}>-{formatPrice(promoDiscountAmount)}</span>
+                <div className="flex justify-between text-sm min-w-0">
+                  <span className="min-w-0 truncate" style={{ color: '#D4AF37' }}>🏷️ 折扣碼 {promoApplied.code}</span>
+                  <span className="shrink-0 whitespace-nowrap ml-2" style={{ color: '#D4AF37' }}>-{formatPrice(promoDiscountAmount)}</span>
                 </div>
               )}
 
@@ -1627,14 +1627,14 @@ if (paymentMethod === 'cod') {
                 onCreditsChange={setCreditsToUse}
               />
               {creditsToUse > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: '#D4AF37' }}>🎁 折抵優惠</span>
-                  <span style={{ color: '#D4AF37' }}>-{formatPrice(creditsToUse)}</span>
+                <div className="flex justify-between text-sm min-w-0">
+                  <span className="min-w-0 truncate" style={{ color: '#D4AF37' }}>🎁 折抵優惠</span>
+                  <span className="shrink-0 whitespace-nowrap ml-2" style={{ color: '#D4AF37' }}>-{formatPrice(creditsToUse)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
+              <div className="flex justify-between text-lg font-bold border-t pt-2 min-w-0">
                 <span>總計</span>
-                <span className="text-accent">{formatPrice(total)}</span>
+                <span className="text-accent shrink-0 whitespace-nowrap ml-2">{formatPrice(total)}</span>
               </div>
             </div>
 

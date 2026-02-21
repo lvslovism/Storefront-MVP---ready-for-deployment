@@ -174,7 +174,7 @@ export default function CreditsSelectorV2({
 
   return (
     <div
-      className="rounded-lg p-4 my-3"
+      className="rounded-lg p-4 my-3 overflow-hidden"
       style={{
         border: '1px solid rgba(212, 175, 55, 0.3)',
         background: 'rgba(212, 175, 55, 0.05)',
@@ -191,7 +191,7 @@ export default function CreditsSelectorV2({
       </div>
 
       {/* 明細 breakdown（迷你版） */}
-      <div className="flex gap-3 mb-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
         {data.breakdown
           .filter((w) => w.balance > 0)
           .map((w) => (
@@ -213,8 +213,8 @@ export default function CreditsSelectorV2({
       />
 
       {/* 數字輸入 + 上限說明 */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-1 min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>$</span>
           <input
             type="text"
@@ -231,7 +231,7 @@ export default function CreditsSelectorV2({
             }}
           />
         </div>
-        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+        <span className="text-xs min-w-0 truncate ml-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
           最多可折 ${formatAmount(max)}（訂單 {pctLabel}%）
         </span>
       </div>
