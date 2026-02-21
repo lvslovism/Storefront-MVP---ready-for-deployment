@@ -20,7 +20,12 @@ body {
   background-color: #ffffff;
   color: #1a1a1a;
   overflow-x: hidden;
-  max-width: 100vw;
+  max-width: 100%;
+}
+
+/* 防止 CSS Grid/Flex 子元素撐出容器 */
+.grid > * {
+  min-width: 0;
 }
 
 /* 按鈕樣式 */

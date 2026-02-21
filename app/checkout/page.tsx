@@ -1105,46 +1105,15 @@ if (paymentMethod === 'cod') {
   }
 
   return (
-    <div className="checkout-page container mx-auto px-4 py-8 max-w-full">
-      <div id="debug-overflow" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        background: 'red',
-        color: 'white',
-        fontSize: '10px',
-        padding: '4px',
-        zIndex: 9999,
-        display: 'none'
-      }} />
-      <script dangerouslySetInnerHTML={{ __html: `
-        setTimeout(function() {
-          var debug = document.getElementById('debug-overflow');
-          var results = [];
-          document.querySelectorAll('*').forEach(function(el) {
-            var rect = el.getBoundingClientRect();
-            if (rect.right > window.innerWidth + 1) {
-              results.push(el.tagName + '.' + el.className.split(' ').slice(0,3).join('.') + ' -> right:' + Math.round(rect.right) + ' (vw:' + window.innerWidth + ')');
-            }
-          });
-          if (results.length) {
-            debug.style.display = 'block';
-            debug.innerHTML = 'OVERFLOW: ' + results.join(' | ');
-          } else {
-            debug.style.display = 'block';
-            debug.innerHTML = 'NO OVERFLOW (vw:' + window.innerWidth + ', body:' + document.body.scrollWidth + ', html:' + document.documentElement.scrollWidth + ')';
-          }
-        }, 2000);
-      `}} />
+    <div className="checkout-page w-full max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-8">結帳</h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* 左側：表單 */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="lg:col-span-2 min-w-0">
+          <form onSubmit={handleSubmit} className="space-y-8 min-w-0">
             {/* 收件人資訊 */}
-            <section className="card p-4 sm:p-6">
+            <section className="card p-4 sm:p-6 overflow-hidden">
               <h2 className="text-lg font-bold mb-4">收件人資訊</h2>
               <div className="grid gap-4">
                 <div>
@@ -1191,7 +1160,7 @@ if (paymentMethod === 'cod') {
             </section>
 
             {/* 物流方式 */}
-            <section className="card p-4 sm:p-6">
+            <section className="card p-4 sm:p-6 overflow-hidden">
               <h2 className="text-lg font-bold mb-4">物流方式</h2>
 
               {/* 物流選項 */}
@@ -1526,7 +1495,7 @@ if (paymentMethod === 'cod') {
         </div>
 
         {/* 右側：訂單摘要 */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 min-w-0">
           <div className="card order-summary p-4 sm:p-6 sticky top-24 overflow-hidden w-full min-w-0">
             <h2 className="text-lg font-bold mb-4">訂單摘要</h2>
 
