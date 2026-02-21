@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useCart } from './CartProvider';
 import { formatPrice, config } from '@/lib/config';
 import Image from 'next/image';
@@ -10,12 +11,32 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
-// 滿額折扣設定
-const AUTO_DISCOUNT_THRESHOLD = 2000;
-const AUTO_DISCOUNT_AMOUNT = 200;
+// 滿額折扣設定（Fallback — DB 有值時會被覆蓋）
+const AUTO_DISCOUNT_THRESHOLD_FALLBACK = 2000;
+const AUTO_DISCOUNT_AMOUNT_FALLBACK = 200;
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { cart, isLoading, updateItem, removeItem } = useCart();
+
+  // 從 DB 讀取結帳設定（滿額折扣），失敗時用 FALLBACK
+  const [checkoutConfig, setCheckoutConfig] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/checkout/config')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCheckoutConfig(data); })
+      .catch(err => console.warn('[CartDrawer] Config fallback:', err));
+  }, []);
+
+  // 動態版常數：DB 有值就用 DB，否則用 FALLBACK
+  const autoDiscountThreshold = (() => {
+    const d = checkoutConfig?.promotions?.auto_discounts?.[0];
+    return d ? d.threshold : AUTO_DISCOUNT_THRESHOLD_FALLBACK;
+  })();
+  const autoDiscountAmount = (() => {
+    const d = checkoutConfig?.promotions?.auto_discounts?.[0];
+    return d ? d.amount : AUTO_DISCOUNT_AMOUNT_FALLBACK;
+  })();
 
   if (!isOpen) return null;
 
@@ -24,8 +45,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const amountToFreeShipping = config.shipping.freeShippingThreshold - subtotal;
 
   // 滿額折扣
-  const hasAutoDiscount = subtotal >= AUTO_DISCOUNT_THRESHOLD;
-  const amountToAutoDiscount = AUTO_DISCOUNT_THRESHOLD - subtotal;
+  const hasAutoDiscount = subtotal >= autoDiscountThreshold;
+  const amountToAutoDiscount = autoDiscountThreshold - subtotal;
 
   return (
     <>
@@ -269,14 +290,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 className="text-sm py-2 px-3 rounded-lg"
                 style={{ background: 'rgba(212,175,55,0.12)', color: '#D4AF37' }}
               >
-                🎉 滿額折 -{formatPrice(AUTO_DISCOUNT_AMOUNT)}
+                🎉 滿額折 -{formatPrice(autoDiscountAmount)}
               </div>
             ) : amountToAutoDiscount > 0 && (
               <div
                 className="text-sm py-2 px-3 rounded-lg"
                 style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)' }}
               >
-                再買 <span className="font-bold" style={{ color: '#D4AF37' }}>{formatPrice(amountToAutoDiscount)}</span> 享滿額折 {formatPrice(AUTO_DISCOUNT_AMOUNT)}
+                再買 <span className="font-bold" style={{ color: '#D4AF37' }}>{formatPrice(amountToAutoDiscount)}</span> 享滿額折 {formatPrice(autoDiscountAmount)}
               </div>
             )}
 
