@@ -1,15 +1,6 @@
 // lib/price-display.ts
 // 查詢 product_price_display 表，取得 CMS 促銷展示價格
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl =
-  process.env.SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://ephdzjkgpkuydpbkxnfw.supabase.co';
-
-// 用 anon key 讀取（RLS 允許 anon 讀 active 記錄）
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+import { getSupabase, getMerchantCode } from '@/lib/supabase';
 
 export interface PriceDisplayInfo {
   product_id: string;
@@ -25,12 +16,13 @@ export interface PriceDisplayInfo {
  */
 export async function getProductPriceDisplays(
   productIds: string[],
-  merchantCode: string = 'minjie'
+  merchantCode?: string
 ): Promise<Map<string, PriceDisplayInfo>> {
   const map = new Map<string, PriceDisplayInfo>();
-  if (!productIds.length || !supabaseAnonKey) return map;
+  if (!productIds.length) return map;
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const supabase = getSupabase();
+  const mc = merchantCode || getMerchantCode();
 
   // 分批查詢（避免 URL 過長）
   for (let i = 0; i < productIds.length; i += 50) {
@@ -40,7 +32,7 @@ export async function getProductPriceDisplays(
       .select(
         'product_id, variant_id, original_price, display_price, discount_label'
       )
-      .eq('merchant_code', merchantCode)
+      .eq('merchant_code', mc)
       .eq('is_active', true)
       .in('product_id', batch);
 
@@ -66,19 +58,19 @@ export async function getProductPriceDisplays(
  */
 export async function getVariantPriceDisplays(
   productId: string,
-  merchantCode: string = 'minjie'
+  merchantCode?: string
 ): Promise<Map<string, PriceDisplayInfo>> {
   const map = new Map<string, PriceDisplayInfo>();
-  if (!supabaseAnonKey) return map;
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const supabase = getSupabase();
+  const mc = merchantCode || getMerchantCode();
 
   const { data, error } = await supabase
     .from('product_price_display')
     .select(
       'product_id, variant_id, original_price, display_price, discount_label'
     )
-    .eq('merchant_code', merchantCode)
+    .eq('merchant_code', mc)
     .eq('product_id', productId)
     .eq('is_active', true);
 
