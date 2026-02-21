@@ -9,9 +9,11 @@ import QuantitySelector from '@/components/website/QuantitySelector';
 import { useCart } from '@/components/CartProvider';
 import { formatPrice, config } from '@/lib/config';
 import { trackViewItem, trackAddToCart } from '@/lib/analytics';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 interface ProductDetailClientProps {
   product: any;
+  variantPriceDisplays?: Record<string, PriceDisplayInfo>;
 }
 
 // 處理描述文字：換行 + 關鍵字高亮
@@ -46,7 +48,7 @@ function formatDescription(text: string): string {
   return formatted;
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, variantPriceDisplays }: ProductDetailClientProps) {
   const router = useRouter();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -98,7 +100,16 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   // 價格
   const price = selectedVariant?.calculated_price?.calculated_amount;
   const originalPrice = selectedVariant?.calculated_price?.original_amount;
-  const hasDiscount = originalPrice && originalPrice > price;
+  const medusaDiscount = originalPrice && originalPrice > price;
+
+  // CMS 促銷折扣（針對當前 variant）
+  const variantId = selectedVariant?.id;
+  const cmsPriceInfo = variantId && variantPriceDisplays?.[variantId];
+  const cmsDiscount = cmsPriceInfo && cmsPriceInfo.display_price < cmsPriceInfo.original_price;
+
+  // 合併判斷
+  const hasDiscount = medusaDiscount || cmsDiscount;
+  const cmsDiscountLabel = cmsDiscount ? (cmsPriceInfo?.discount_label || null) : null;
 
   // 庫存判斷
   const currentVariant = selectedVariant || (product.variants?.length === 1 ? product.variants[0] : null);
@@ -243,16 +254,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <div className="flex items-center gap-3 mb-8">
             {hasDiscount && (
               <span className="text-lg line-through" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                {formatPrice(originalPrice)}
+                {formatPrice(cmsDiscount && !medusaDiscount && cmsPriceInfo ? cmsPriceInfo.original_price : originalPrice)}
               </span>
             )}
             <span className="text-2xl md:text-3xl font-bold gold-text">
-              {price ? formatPrice(price) : '請選擇規格'}
+              {price
+                ? formatPrice(cmsDiscount && !medusaDiscount && cmsPriceInfo ? cmsPriceInfo.display_price : price)
+                : '請選擇規格'}
             </span>
             {hasDiscount && (
               <span className="text-xs px-2 py-1 rounded-full font-medium"
                 style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37' }}>
-                優惠價
+                {cmsDiscountLabel || '優惠價'}
               </span>
             )}
           </div>
@@ -412,11 +425,13 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold gold-text">
-                {price ? formatPrice(price) : '請選擇規格'}
+                {price
+                  ? formatPrice(cmsDiscount && !medusaDiscount && cmsPriceInfo ? cmsPriceInfo.display_price : price)
+                  : '請選擇規格'}
               </span>
               {hasDiscount && (
                 <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {formatPrice(originalPrice)}
+                  {formatPrice(cmsDiscount && !medusaDiscount && cmsPriceInfo ? cmsPriceInfo.original_price : originalPrice)}
                 </span>
               )}
             </div>

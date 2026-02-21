@@ -2,16 +2,43 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Product, getProductLowestPrice, hasDiscount } from '@/lib/medusa';
 import { formatPrice } from '@/lib/config';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 interface ProductCardProps {
   product: Product;
+  priceDisplay?: PriceDisplayInfo;  // CMS 促銷展示價格（optional，不傳時行為不變）
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, priceDisplay }: ProductCardProps) {
   const lowestPrice = getProductLowestPrice(product);
   const firstVariant = product.variants?.[0];
-  const showDiscount = firstVariant && hasDiscount(firstVariant);
-  const originalPrice = firstVariant?.calculated_price?.original_amount;
+
+  // Medusa Price List 折扣
+  const medusaDiscount = firstVariant && hasDiscount(firstVariant);
+  const medusaOriginalPrice = firstVariant?.calculated_price?.original_amount;
+
+  // CMS Promotion 折扣
+  const cmsDiscount = priceDisplay && priceDisplay.display_price < priceDisplay.original_price;
+
+  // 合併判斷：任一來源有折扣就顯示
+  const showDiscount = medusaDiscount || cmsDiscount;
+
+  // 決定 badge 文字 + 原價
+  let discountBadge = '特價';
+  let displayOriginalPrice = medusaOriginalPrice;
+
+  if (cmsDiscount && priceDisplay) {
+    discountBadge = priceDisplay.discount_label || '特價';
+    // CMS 折扣時，如果 Medusa 沒有自己的折扣，用 CMS 的原價
+    if (!medusaDiscount) {
+      displayOriginalPrice = priceDisplay.original_price;
+    }
+  }
+
+  // 顯示價格：CMS 有折扣且 Medusa 沒有自己的 Price List 折扣時，用 CMS display_price
+  const displayPrice = (cmsDiscount && !medusaDiscount && priceDisplay)
+    ? priceDisplay.display_price
+    : lowestPrice;
 
   return (
     <Link href={`/products/${product.handle}`} className="group">
@@ -48,7 +75,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* 折扣標籤 */}
           {showDiscount && (
             <div className="absolute top-2 left-2 bg-gold text-black text-xs px-2 py-1 rounded font-medium">
-              特價
+              {discountBadge}
             </div>
           )}
         </div>
@@ -60,13 +87,13 @@ export default function ProductCard({ product }: ProductCardProps) {
           </h3>
 
           <div className="mt-2 flex items-center gap-2">
-            {showDiscount && originalPrice && (
+            {showDiscount && displayOriginalPrice && (
               <span className="text-gray-500 line-through text-sm">
-                {formatPrice(originalPrice)}
+                {formatPrice(displayOriginalPrice)}
               </span>
             )}
             <span className={`text-lg font-bold ${showDiscount ? 'text-gold' : 'text-gold'}`}>
-              {formatPrice(lowestPrice)}
+              {formatPrice(displayPrice)}
             </span>
           </div>
 

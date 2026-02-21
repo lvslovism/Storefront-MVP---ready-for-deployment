@@ -1,6 +1,7 @@
 // app/(website)/page.tsx
 import { getProducts, getProductsByIds } from '@/lib/medusa';
 import { getHomeBanners, getPageSeo, getGlobalSeo, DEFAULT_SEO, getFeaturedProductIds, getFeaturedPlacements, getSection, getProductSortOrder, getHomepageProductSettings, getPageLayout } from '@/lib/cms';
+import { getProductPriceDisplays } from '@/lib/price-display';
 import { getMotionTheme, getMotionExtras } from '@/lib/motion';
 import ImageSection from '@/components/cms/ImageSection';
 import AnimatedSection from '@/components/website/sections/AnimatedSection';
@@ -9,6 +10,7 @@ import TrustNumbersSection from '@/components/website/sections/TrustNumbersSecti
 import ProductWallSection from '@/components/website/sections/ProductWallSection';
 import FluidBackground from '@/components/website/effects/FluidBackground';
 import type { Metadata } from 'next';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 export const revalidate = 3600; // ISR: 1 小時
 
@@ -148,6 +150,13 @@ export default async function HomePage() {
 
   console.log('[Home] All products:', allProducts.length, 'Featured:', featuredProductIdSet.size, 'Wall:', displayProducts.length, 'Show wall:', homepageSettings.show_product_wall);
 
+  // ===== CMS 促銷展示價格 =====
+  const allHomeProductIds = allProducts.map((p: any) => p.id);
+  const priceDisplayMap = await getProductPriceDisplays(allHomeProductIds);
+  // 轉為 Record（可序列化，傳給 client component）
+  const priceDisplays: Record<string, PriceDisplayInfo> = {};
+  priceDisplayMap.forEach((v, k) => { priceDisplays[k] = v; });
+
   // ===== 從 DB 讀取區塊順序 =====
   const layoutSections = await getPageLayout('home');
 
@@ -207,12 +216,14 @@ export default async function HomePage() {
         showViewAll={homepageSettings.show_view_all_button}
         sectionTitle={homepageSettings.featured_title}
         sectionSubtitle={homepageSettings.featured_subtitle}
+        priceDisplays={priceDisplays}
       />
     ),
     products: () => (
       homepageSettings.show_product_wall && displayProducts.length > 0 ? (
         <ProductWallSection
           theme={theme}
+          priceDisplays={priceDisplays}
           data={{
             title: homepageSettings.wall_title,
             subtitle: homepageSettings.wall_subtitle,

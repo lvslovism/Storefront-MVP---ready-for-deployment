@@ -1,10 +1,12 @@
 import ProductCard from '@/components/ProductCard';
 import AnimatedSection from './AnimatedSection';
 import type { MotionThemeConfig } from '@/lib/motion/themes';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 interface Props {
   sectionKey?: string;
   theme: MotionThemeConfig;
+  priceDisplays?: Record<string, PriceDisplayInfo>;
   data?: {
     title?: string;
     subtitle?: string;
@@ -34,7 +36,7 @@ function getColumnClass(mobile: number, desktop: number): string {
   return `${mobileWidths[mobile] || mobileWidths[2]} ${desktopWidths[desktop] || desktopWidths[4]}`;
 }
 
-export default function ProductWallSection({ theme, data }: Props) {
+export default function ProductWallSection({ theme, data, priceDisplays }: Props) {
   if (!data?.products?.length) return null;
 
   const colMobile = data.columns_mobile || 2;
@@ -66,7 +68,7 @@ export default function ProductWallSection({ theme, data }: Props) {
                 className={getColumnClass(colMobile, colDesktop)}
                 style={{ maxWidth: '300px' }}
               >
-                <ProductCard product={product} />
+                <ProductCard product={product} priceDisplay={priceDisplays?.[product.id]} />
               </div>
             ))}
           </div>

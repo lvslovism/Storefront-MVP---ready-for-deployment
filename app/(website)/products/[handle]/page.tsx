@@ -1,6 +1,8 @@
 import { getProducts } from '@/lib/medusa';
+import { getVariantPriceDisplays } from '@/lib/price-display';
 import ProductDetailClient from './ProductDetailClient';
 import type { Metadata } from 'next';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 export const revalidate = 3600;
 
@@ -109,6 +111,11 @@ export default async function ProductPage({
     );
   }
 
+  // CMS 促銷展示價格（variant_id → PriceDisplayInfo）
+  const variantPriceMap = await getVariantPriceDisplays(product.id);
+  const variantPriceDisplays: Record<string, PriceDisplayInfo> = {};
+  variantPriceMap.forEach((v, k) => { variantPriceDisplays[k] = v; });
+
   const jsonLd = generateProductJsonLd(product);
 
   const breadcrumbJsonLd = {
@@ -146,7 +153,7 @@ export default async function ProductPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ProductDetailClient product={product} />
+      <ProductDetailClient product={product} variantPriceDisplays={variantPriceDisplays} />
     </>
   );
 }

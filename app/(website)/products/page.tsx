@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getProducts } from '@/lib/medusa';
 import { getNavCategories, buildMedusaQuery, getCategorySeo, getPageSeo, DEFAULT_SEO, getProductSortOrder } from '@/lib/cms';
+import { getProductPriceDisplays } from '@/lib/price-display';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ProductCard from '@/components/ProductCard';
 import ProductFilter from '@/components/website/ProductFilter';
@@ -210,6 +211,10 @@ export default async function ProductsPage({
 
   console.log('[Products] Final count:', sorted.length);
 
+  // 取得 CMS 展示價格
+  const productIds = sorted.map((p: any) => p.id);
+  const priceDisplayMap = await getProductPriceDisplays(productIds);
+
   // 分類標題
   const titleSubtitle = currentCategory
     ? currentCategory.slug.toUpperCase().replace(/-/g, ' ')
@@ -247,7 +252,7 @@ export default async function ProductsPage({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {sorted.map((product: any, i: number) => (
             <AnimatedSection key={product.id} delay={i * 60}>
-              <ProductCard product={product} />
+              <ProductCard product={product} priceDisplay={priceDisplayMap.get(product.id)} />
             </AnimatedSection>
           ))}
         </div>

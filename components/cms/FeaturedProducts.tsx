@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ProductCard from '@/components/ProductCard';
+import type { PriceDisplayInfo } from '@/lib/price-display';
 
 interface Tab {
   key: string;       // placement: 'home_featured', 'home_new', etc.
@@ -15,9 +16,10 @@ interface FeaturedProductsProps {
   showViewAll?: boolean;
   sectionTitle?: string;
   sectionSubtitle?: string;
+  priceDisplays?: Record<string, PriceDisplayInfo>;
 }
 
-export default function FeaturedProducts({ tabs, fallbackProducts = [], showViewAll = true, sectionTitle = '精選商品', sectionSubtitle = 'FEATURED' }: FeaturedProductsProps) {
+export default function FeaturedProducts({ tabs, fallbackProducts = [], showViewAll = true, sectionTitle = '精選商品', sectionSubtitle = 'FEATURED', priceDisplays }: FeaturedProductsProps) {
   const [activeTab, setActiveTab] = useState(0);
 
   // 沒有 CMS 資料時，用 fallback
@@ -67,7 +69,7 @@ export default function FeaturedProducts({ tabs, fallbackProducts = [], showView
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           {currentProducts.slice(0, 8).map((product: any) => (
             <div key={product.id} className="w-[calc(50%-8px)] md:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)] max-w-[300px]">
-              <ProductCard product={product} />
+              <ProductCard product={product} priceDisplay={priceDisplays?.[product.id]} />
             </div>
           ))}
         </div>
