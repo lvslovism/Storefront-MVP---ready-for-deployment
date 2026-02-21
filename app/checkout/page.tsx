@@ -1105,7 +1105,7 @@ if (paymentMethod === 'cod') {
   }
 
   return (
-    <div className="checkout-page container mx-auto px-4 py-8">
+    <div className="checkout-page container mx-auto px-4 py-8 max-w-full">
       <h1 className="text-2xl font-bold mb-8">結帳</h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
