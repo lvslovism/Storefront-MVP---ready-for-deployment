@@ -17,7 +17,6 @@ export interface PriceDisplayInfo {
   original_price: number;
   display_price: number;
   discount_label: string | null;
-  promotion_name: string | null;
 }
 
 /**
@@ -39,7 +38,7 @@ export async function getProductPriceDisplays(
     const { data, error } = await supabase
       .from('product_price_display')
       .select(
-        'product_id, variant_id, original_price, display_price, discount_label, promotion_name'
+        'product_id, variant_id, original_price, display_price, discount_label'
       )
       .eq('merchant_code', merchantCode)
       .eq('is_active', true)
@@ -77,7 +76,7 @@ export async function getVariantPriceDisplays(
   const { data, error } = await supabase
     .from('product_price_display')
     .select(
-      'product_id, variant_id, original_price, display_price, discount_label, promotion_name'
+      'product_id, variant_id, original_price, display_price, discount_label'
     )
     .eq('merchant_code', merchantCode)
     .eq('product_id', productId)

@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
             original_price: originalPrice,
             display_price: displayPrice,
             discount_label: discountLabel,
+            discount_type: rule.discount_method,  // 'fixed' | 'percentage'
             promotion_rule_id: rule.id,
-            promotion_name: rule.name,
             is_active: true,
             valid_until: rule.valid_until || null,
           });
