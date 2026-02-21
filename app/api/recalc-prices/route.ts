@@ -110,7 +110,6 @@ export async function POST(req: NextRequest) {
 
           let displayPrice: number;
           let discountLabel: string;
-          let discountPercentage: number;
 
           if (rule.discount_method === 'fixed') {
             displayPrice = Math.max(
@@ -118,14 +117,11 @@ export async function POST(req: NextRequest) {
               originalPrice - Number(rule.discount_value)
             );
             discountLabel = `省$${Number(rule.discount_value)}`;
-            discountPercentage =
-              (Number(rule.discount_value) / originalPrice) * 100;
           } else {
             // percentage
             const pct = Number(rule.discount_value);
             displayPrice = Math.round(originalPrice * (1 - pct / 100));
             discountLabel = `${Math.round(100 - pct)}折`;
-            discountPercentage = pct;
           }
 
           upsertRows.push({
@@ -135,8 +131,6 @@ export async function POST(req: NextRequest) {
             original_price: originalPrice,
             display_price: displayPrice,
             discount_label: discountLabel,
-            discount_percentage:
-              Math.round(discountPercentage * 100) / 100,
             promotion_id: rule.id,
             promotion_name: rule.name,
             is_active: true,
