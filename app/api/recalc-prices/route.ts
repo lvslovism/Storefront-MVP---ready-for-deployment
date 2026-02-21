@@ -2,16 +2,13 @@
 // 根據 promotion_rules 計算商品展示價格，寫入 product_price_display 表
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase, getMerchantCode } from '@/lib/supabase';
+import { medusa } from '@/lib/config';
 
 const RECALC_SECRET = process.env.RECALC_SECRET || '';
-const MEDUSA_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ||
-  process.env.MEDUSA_BACKEND_URL ||
-  '';
-const PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '';
-const REGION_ID =
-  process.env.NEXT_PUBLIC_MEDUSA_REGION_ID || '';
+// 使用 config/store.json（與 lib/medusa.ts 同源），env var 作 fallback
+const MEDUSA_URL = medusa.backendUrl || process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || '';
+const PUBLISHABLE_KEY = medusa.publishableKey || process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '';
+const REGION_ID = medusa.regionId || process.env.NEXT_PUBLIC_MEDUSA_REGION_ID || '';
 const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET || '';
 
 export async function POST(req: NextRequest) {
@@ -24,14 +21,6 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabase();
   const merchantCode = getMerchantCode();
 
-  console.log('[recalc] Config check:', {
-    merchantCode,
-    hasMedusaUrl: !!MEDUSA_URL,
-    hasPublishableKey: !!PUBLISHABLE_KEY,
-    hasRegionId: !!REGION_ID,
-    hasRevalidateSecret: !!REVALIDATE_SECRET,
-  });
-
   try {
     // 2. 讀取 active 促銷規則（product_sale / multi_product / collection_discount）
     const { data: rules, error: rulesError } = await supabase
@@ -43,20 +32,6 @@ export async function POST(req: NextRequest) {
 
     if (rulesError) throw rulesError;
 
-    console.log('[recalc] Step 2: queried rules count =', rules?.length ?? 0);
-    if (rules?.length) {
-      console.log('[recalc] Rules:', rules.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        type: r.type,
-        is_active: r.is_active,
-        sync_status: r.sync_status,
-        target_product_ids: r.target_product_ids,
-        valid_from: r.valid_from,
-        valid_until: r.valid_until,
-      })));
-    }
-
     // 過濾有效期間
     const now = new Date().toISOString();
     const activeRules = (rules || []).filter((r) => {
@@ -64,8 +39,6 @@ export async function POST(req: NextRequest) {
       if (r.valid_until && r.valid_until < now) return false;
       return true;
     });
-
-    console.log('[recalc] Step 2b: after date filter, activeRules count =', activeRules.length);
 
     if (activeRules.length === 0) {
       // 沒有 active 規則，停用所有記錄
@@ -108,8 +81,6 @@ export async function POST(req: NextRequest) {
       // collection_discount: 第一版先跳過（需要另外查 collection 的商品）
     }
 
-    console.log('[recalc] Step 3: allProductIds count =', allProductIds.size, 'ids =', Array.from(allProductIds));
-
     if (allProductIds.size === 0) {
       return NextResponse.json({
         success: true,
@@ -122,15 +93,6 @@ export async function POST(req: NextRequest) {
     // 4. 從 Medusa 取商品含價格（分批，每批 20）
     const productIds = Array.from(allProductIds);
     const products = await fetchProductsWithPrices(productIds);
-
-    console.log('[recalc] Step 4: fetched products count =', products.length);
-    if (products.length > 0) {
-      console.log('[recalc] First product variants:', products[0]?.variants?.map((v: any) => ({
-        id: v.id,
-        calculated_amount: v.calculated_price?.calculated_amount,
-        currency_code: v.calculated_price?.currency_code,
-      })));
-    }
 
     // 5. 計算展示價格
     const upsertRows: any[] = [];
@@ -182,11 +144,6 @@ export async function POST(req: NextRequest) {
           });
         }
       }
-    }
-
-    console.log('[recalc] Step 5: upsertRows count =', upsertRows.length);
-    if (upsertRows.length > 0) {
-      console.log('[recalc] First upsert row:', upsertRows[0]);
     }
 
     // 6. Upsert
@@ -295,9 +252,9 @@ async function triggerRevalidate() {
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.VERCEL_URL
+    (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
+      : 'http://localhost:3000');
 
   try {
     await fetch(`${baseUrl}/api/revalidate`, {
